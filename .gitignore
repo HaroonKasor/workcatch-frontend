@@ -26,3 +26,7 @@ tests/visual/__actual__/
 # os
 .DS_Store
 Thumbs.db
+
+# Figma reference exports. Re-pull from the file with get_screenshot when you
+# need to compare; a committed copy goes stale without anyone noticing.
+tests/visual/__figma__/
