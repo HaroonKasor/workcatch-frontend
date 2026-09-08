@@ -1,0 +1,28 @@
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.tsbuildinfo
+
+# env — Vite inlines every VITE_* value into the bundle, so a secret here is
+# a secret published to every visitor.
+.env
+.env.*
+!.env.example
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+tests/visual/__actual__/
+
+# tooling
+.omc/
+.idea/
+.vscode/
+*.local
+
+# os
+.DS_Store
+Thumbs.db
