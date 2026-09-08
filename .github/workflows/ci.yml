@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+
+      - name: Guard - no secrets in the browser bundle
+        run: |
+          if grep -rIlE 'CHANNEL_SECRET|channelSecret|CHANNEL_ACCESS_TOKEN|-----BEGIN' dist/ ; then
+            echo "::error::secret-looking string found in dist/"
+            exit 1
+          fi
+          echo clean
+
+      - run: npm audit --audit-level=high
+
+      - name: Install browser
+        run: npx playwright install chromium --with-deps
+      # Keyboard order, focus visibility and no-horizontal-scroll are things a
+      # screenshot cannot prove, so they are asserted here.
+      - name: Accessibility and layout checks
+        run: npx playwright test tests/a11y
+
+      - name: Capture screens for Figma comparison
+        run: npx playwright test tests/visual
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rendered-screens
+          path: tests/visual/__actual__/
+          retention-days: 7

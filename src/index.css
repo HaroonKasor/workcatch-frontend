@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+/* Self-hosted. Never load fonts from a third-party CDN. */
+@import "@fontsource/kanit/thai-400.css";
+@import "@fontsource/kanit/thai-500.css";
+@import "@fontsource/kanit/thai-600.css";
+@import "@fontsource/kanit/latin-400.css";
+@import "@fontsource/kanit/latin-500.css";
+@import "@fontsource/kanit/latin-600.css";
+@import "@fontsource/anuphan/thai-400.css";
+@import "@fontsource/anuphan/thai-500.css";
+@import "@fontsource/anuphan/thai-600.css";
+@import "@fontsource/anuphan/latin-400.css";
+@import "@fontsource/anuphan/latin-500.css";
+@import "@fontsource/anuphan/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+@import "@fontsource/ibm-plex-mono/latin-600.css";
+
+/*
+  Design tokens — mirrored from Figma file us7AYNBGNXKWFJdd8buLZJ, page "02 — Foundations".
+  Figma exports these with code syntax var(--wc-*), so the names below match 1:1.
+
+  THE RULE THAT GOVERNS COLOUR IN THIS APP:
+    warm hues  -> time only  (soon / today / late)
+    cool hues  -> projects only
+    everything else is achromatic
+  If you are reaching for --wc-time-* on something that is not about a deadline, stop.
+*/
+:root {
+  --wc-surface-ground: #D7DBDC;
+  --wc-surface-sheet: #FCFCFB;
+  --wc-surface-on-dark: #FCFCFB;
+  --wc-surface-selected: #EEEEED;
+
+  --wc-ink-primary: #14181A;
+  --wc-ink-secondary: #5C666B;
+  --wc-ink-tertiary: #8B9599;
+  --wc-ink-solid: #14181A;
+
+  --wc-rule-strong: #C4CACC;
+  --wc-rule-soft: #E6E9E9;
+
+  --wc-time-soon: #A8720E;
+  --wc-time-today: #C0410E;
+  --wc-time-late: #96122F;
+  --wc-time-waiting: #4E6D80;
+  --wc-time-done: #8B9599;
+
+  --wc-project-blue: #2563EB;
+  --wc-project-green: #059669;
+  --wc-project-violet: #7C3AED;
+  --wc-project-teal: #0891B2;
+  --wc-project-indigo: #4F46E5;
+  --wc-project-slate: #64748B;
+
+  /* Aliases. state/error deliberately points at time/late: it is allowed in forms
+     and alert banners only, never inside the task ledger. */
+  --wc-state-error: var(--wc-time-late);
+  --wc-state-focus: var(--wc-ink-primary);
+}
+
+@theme {
+  --color-ground: var(--wc-surface-ground);
+  --color-sheet: var(--wc-surface-sheet);
+  --color-on-dark: var(--wc-surface-on-dark);
+  --color-selected: var(--wc-surface-selected);
+
+  --color-ink: var(--wc-ink-primary);
+  --color-ink-2: var(--wc-ink-secondary);
+  --color-ink-3: var(--wc-ink-tertiary);
+
+  --color-rule: var(--wc-rule-strong);
+  --color-rule-soft: var(--wc-rule-soft);
+
+  --color-time-soon: var(--wc-time-soon);
+  --color-time-today: var(--wc-time-today);
+  --color-time-late: var(--wc-time-late);
+  --color-time-waiting: var(--wc-time-waiting);
+  --color-time-done: var(--wc-time-done);
+
+  --color-project-blue: var(--wc-project-blue);
+  --color-project-green: var(--wc-project-green);
+  --color-project-violet: var(--wc-project-violet);
+  --color-project-teal: var(--wc-project-teal);
+  --color-project-indigo: var(--wc-project-indigo);
+  --color-project-slate: var(--wc-project-slate);
+
+  --color-error: var(--wc-state-error);
+
+  --font-display: "Kanit", system-ui, sans-serif;
+  --font-sans: "Anuphan", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Spacing scale from Figma. Component padding must come from here. */
+  --spacing-hair: 2px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 28px;
+  --spacing-7: 40px;
+  --spacing-8: 56px;
+
+  /* Radius carries meaning: 2px = paper you cannot touch, 8px = control you can. */
+  --radius-sheet: 2px;
+  --radius-control: 8px;
+  --radius-pill: 9999px;
+
+  --spacing-row: 64px;
+  --spacing-row-compact: 48px;
+  --spacing-rail: 232px;
+  --spacing-gutter: 112px;
+  --spacing-content: 1128px;
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--wc-surface-ground);
+    color: var(--wc-ink-primary);
+    font-family: "Anuphan", system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  /* Focus is never a time colour — focus has nothing to do with urgency. */
+  :focus-visible {
+    outline: 2px solid var(--wc-state-focus);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+/* Text ramp — mirrors the 12 text styles in Figma exactly. */
+@layer components {
+  .t-page-title { font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1.24; letter-spacing: -0.6px; }
+  .t-section    { font-family: var(--font-display); font-weight: 500; font-size: 17px; line-height: 1.30; letter-spacing: -0.2px; }
+  .t-wordmark   { font-family: var(--font-display); font-weight: 600; font-size: 21px; line-height: 1.20; letter-spacing: -0.4px; }
+
+  /* Priority is expressed as WEIGHT, never as colour. */
+  .t-task-urgent { font-weight: 600; font-size: 14px; line-height: 1.35; }
+  .t-task-high   { font-weight: 500; font-size: 14px; line-height: 1.35; }
+  .t-task-normal { font-weight: 400; font-size: 14px; line-height: 1.35; }
+
+  .t-body { font-size: 13px; line-height: 1.5; }
+  .t-meta { font-size: 11px; line-height: 1.3; }
+
+  .t-time     { font-family: var(--font-mono); font-weight: 400; font-size: 11.5px; line-height: 1.45; }
+  .t-time-em  { font-family: var(--font-mono); font-weight: 600; font-size: 11.5px; line-height: 1.45; }
+  .t-caption  { font-family: var(--font-mono); font-weight: 400; font-size: 10px; line-height: 1.4; letter-spacing: 0.5px; }
+  .t-label    { font-family: var(--font-mono); font-weight: 500; font-size: 9px;  line-height: 1.4; letter-spacing: 1.1px; }
+}
