@@ -4,6 +4,7 @@ import { TaskRow } from '../components/TaskRow'
 import { useTasks } from '../lib/api'
 import { byUrgency, timeStateOf } from '../lib/time'
 import type { Task, TimeState } from '../lib/types'
+import { useNow } from '../lib/useNow'
 
 /**
  * /app/tasks — Figma node 35:118
@@ -20,7 +21,7 @@ export default function Tasks() {
   const [params, setParams] = useSearchParams()
   const [q, setQ] = useState('')
   const filter = params.get('filter') ?? 'all'
-  const now = new Date()
+  const now = useNow()
 
   const buckets = useMemo<Bucket[]>(() => {
     if (!data) return []
@@ -41,7 +42,7 @@ export default function Tasks() {
       { key: 'none', label: 'ยังไม่มีกำหนด', note: 'ควรใส่กำหนดส่ง', tasks: of('none') },
       { key: 'done', label: 'เสร็จแล้ว', note: '', tasks: of('done') },
     ].filter((b) => b.tasks.length > 0)
-  }, [data, filter, q])
+  }, [data, filter, q, now])
 
   if (isPending) return <p className="t-body text-ink-3">กำลังโหลด…</p>
   if (isError) return <p className="t-body text-error">โหลดรายการงานไม่ได้</p>

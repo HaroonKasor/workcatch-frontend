@@ -1,5 +1,6 @@
 import { useTasks } from '../lib/api'
 import type { Task } from '../lib/types'
+import { useNow } from '../lib/useNow'
 
 /**
  * /app/inbox — Figma node 34:2
@@ -10,7 +11,7 @@ import type { Task } from '../lib/types'
  */
 export default function Inbox() {
   const { data, isPending } = useTasks()
-  const now = new Date()
+  const now = useNow()
 
   if (isPending) return <p className="t-body text-ink-3">กำลังโหลด…</p>
 
@@ -36,7 +37,7 @@ export default function Inbox() {
       </p>
 
       <div className="mt-7 grid gap-8 xl:grid-cols-[1fr_344px]">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {items.length === 0 ? (
             <div className="rounded-sheet border border-rule bg-sheet px-7 py-11">
               <p className="t-section">ทุกงานมีที่อยู่แล้ว</p>
@@ -49,7 +50,7 @@ export default function Inbox() {
           )}
         </div>
 
-        <aside>
+        <aside className="min-w-0">
           <header className="flex items-center justify-between">
             <h2 className="t-section">งานเข้ามาจากไหน</h2>
             <p className="t-caption text-ink-3">ที่ยังไม่ได้จัด</p>

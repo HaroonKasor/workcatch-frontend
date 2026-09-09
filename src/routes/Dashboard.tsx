@@ -3,11 +3,12 @@ import { TaskRow } from '../components/TaskRow'
 import { useTasks } from '../lib/api'
 import { byUrgency, longDate, timeStateOf } from '../lib/time'
 import type { Task } from '../lib/types'
+import { useNow } from '../lib/useNow'
 
 /** /app/dashboard — Figma node 9:3 */
 export default function Dashboard() {
   const { data, isPending, isError } = useTasks()
-  const now = new Date()
+  const now = useNow()
 
   if (isPending) return <Skeleton />
   if (isError) return <LoadFailed />
@@ -32,10 +33,10 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-9 grid gap-8 xl:grid-cols-[1fr_344px]">
-        <section>
-          <header className="flex items-center justify-between">
+        <section className="min-w-0">
+          <header className="flex items-center justify-between gap-3">
             <h2 className="t-section">งานวันนี้</h2>
-            <p className="t-caption text-ink-3">เรียงตามเวลาที่เหลือ</p>
+            <p className="t-caption hidden shrink-0 text-ink-3 sm:block">เรียงตามเวลาที่เหลือ</p>
           </header>
           {today.length === 0 ? (
             <Empty
@@ -51,7 +52,7 @@ export default function Dashboard() {
           )}
         </section>
 
-        <aside>
+        <aside className="min-w-0">
           <header className="flex items-center justify-between">
             <h2 className="t-section">กล่องรับงาน</h2>
             <p className="t-caption text-ink-3">ยังไม่ได้จัด {inbox.length}</p>

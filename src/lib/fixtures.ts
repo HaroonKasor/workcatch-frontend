@@ -1,4 +1,4 @@
-import type { Project, Task } from './types'
+import type { NotificationRecord, Project, Task } from './types'
 
 /**
  * Development fixtures. These exist so screens can be built and compared against
@@ -81,4 +81,25 @@ export const tasks: Task[] = [
     id: 't15', title: 'ส่งสรุปประชุมเช้าให้ทีม', status: 'DONE', priority: 'MEDIUM',
     dueAt: h(-2), project: general, completedAt: h(-1.5), createdAt: d(-1),
   },
+]
+
+export const notifications: NotificationRecord[] = [
+  { id: 'n1', at: h(-0.5), taskTitle: 'สรุปรายงานยอดขาย Q3 ส่งหัวหน้าฝ่าย', channel: 'LINE',
+    status: 'SENT', attempt: 1, maxAttempts: 3, errorCode: '200',
+    reason: 'เตือนก่อนครบกำหนด 1 วัน' },
+  { id: 'n2', at: h(-2), taskTitle: 'สรุปงานประจำวัน', channel: 'LINE',
+    status: 'SENT', attempt: 1, maxAttempts: 3, errorCode: '200', reason: 'สรุปประจำวัน 08:00' },
+  { id: 'n3', at: h(6), taskTitle: 'สรุปรายงานยอดขาย Q3 ส่งหัวหน้าฝ่าย', channel: 'LINE',
+    status: 'PENDING', attempt: 0, maxAttempts: 3, reason: 'รอถึงเวลาส่ง' },
+  { id: 'n4', at: h(-20), taskTitle: 'ตรวจนับสต็อกคลังสาขาบางนา', channel: 'LINE',
+    status: 'FAILED_RETRYABLE', attempt: 2, maxAttempts: 3, errorCode: '500',
+    reason: 'LINE ตอบข้อผิดพลาดชั่วคราว จะลองใหม่อีกครั้งใน 30 นาที' },
+  { id: 'n5', at: d(-3), taskTitle: 'ขอไฟล์โลโก้เวอร์ชันล่าสุดจากฝ่ายการตลาด', channel: 'LINE',
+    status: 'FAILED_FINAL', attempt: 1, maxAttempts: 3, errorCode: '403',
+    reason: 'ปัญหาสิทธิ์การส่ง ไม่ลองใหม่เพราะลองไปก็ไม่หาย' },
+  { id: 'n6', at: d(-2), taskTitle: 'ส่งสรุปประชุมเช้าให้ทีม', channel: 'LINE',
+    status: 'CANCELLED', attempt: 0, maxAttempts: 3,
+    reason: 'ปิดงานก่อนถึงเวลาเตือน จึงไม่ส่ง' },
+  { id: 'n7', at: d(-1), taskTitle: 'รออนุมัติงบประมาณจากฝ่ายการเงิน', channel: 'IN_APP',
+    status: 'SENT', attempt: 1, maxAttempts: 3, reason: 'ถึงวันติดตามงานที่รอคนอื่น' },
 ]
