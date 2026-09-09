@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { projects as mockProjects, tasks as mockTasks } from './fixtures'
-import type { Project, Task } from './types'
+import { notifications as mockNotifications, projects as mockProjects, tasks as mockTasks } from './fixtures'
+import type { NotificationRecord, Project, Task } from './types'
 
 /**
  * Data layer. Today it serves fixtures; when the API lands, only the two
@@ -35,5 +35,12 @@ export function useProjects() {
   return useQuery({
     queryKey: ['projects'],
     queryFn: () => get<Project[]>('/projects', mockProjects),
+  })
+}
+
+export function useNotifications() {
+  return useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => get<NotificationRecord[]>('/notifications', mockNotifications),
   })
 }

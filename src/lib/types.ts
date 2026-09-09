@@ -37,3 +37,26 @@ export interface Task {
  * "late" by being written to, it becomes late by time passing.
  */
 export type TimeState = 'late' | 'today' | 'soon' | 'waiting' | 'done' | 'none'
+
+/**
+ * The delivery state machine. Note that SENT means LINE accepted the request —
+ * it does NOT mean the user received or read it. LINE returns 200 even for a
+ * user who has blocked the bot, so anything that claims "delivered" is lying.
+ */
+export type NotificationStatus =
+  | 'PENDING' | 'PROCESSING' | 'SENT'
+  | 'FAILED_RETRYABLE' | 'FAILED_FINAL' | 'CANCELLED'
+
+export interface NotificationRecord {
+  id: string
+  /** UTC instant the attempt was made or is scheduled for. */
+  at: string
+  taskTitle: string
+  channel: 'LINE' | 'IN_APP' | 'WEB_PUSH'
+  status: NotificationStatus
+  attempt: number
+  maxAttempts: number
+  /** Why it is in this state, in the user's language, not a stack trace. */
+  reason: string
+  errorCode?: string
+}

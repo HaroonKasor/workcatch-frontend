@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useTask } from '../lib/api'
 import { clock, longDate, timeLeft, timeStateOf } from '../lib/time'
 import { projectDot, statusLabel, timeText } from '../lib/style'
+import { useNow } from '../lib/useNow'
 
 /**
  * /app/tasks/:id — Figma node 37:389
@@ -13,7 +14,7 @@ import { projectDot, statusLabel, timeText } from '../lib/style'
 export default function TaskDetail() {
   const { id } = useParams()
   const { data: task, isPending, isError } = useTask(id)
-  const now = new Date()
+  const now = useNow()
 
   if (isPending) return <p className="t-body text-ink-3">กำลังโหลด…</p>
   if (isError || !task) return <p className="t-body text-error">ไม่พบงานนี้</p>
@@ -45,7 +46,7 @@ export default function TaskDetail() {
       )}
 
       <div className="mt-8 grid gap-8 xl:grid-cols-[1fr_344px]">
-        <div>
+        <div className="min-w-0">
           <Section title="รายละเอียด">
             <p className="t-body text-ink-2 px-5 py-4 leading-[1.75]">
               {task.description ?? 'ยังไม่ได้ใส่รายละเอียด'}
@@ -60,7 +61,7 @@ export default function TaskDetail() {
           </Section>
         </div>
 
-        <aside className="space-y-8">
+        <aside className="min-w-0 space-y-8">
           <div className="space-y-2.5">
             <button type="button" className="w-full rounded-control bg-ink py-3 text-[13px] font-medium text-on-dark">
               ปิดงานนี้

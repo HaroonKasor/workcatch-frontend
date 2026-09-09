@@ -27,7 +27,7 @@ export function TaskRow({ task, now, last }: { task: Task; now: Date; last?: boo
     >
       <span className={`w-hair self-stretch shrink-0 ${timeBar[state]}`} aria-hidden />
 
-      <span className="w-gutter shrink-0 pl-3 pr-4 text-right">
+      <span className="w-[78px] shrink-0 pl-2.5 pr-3 text-right sm:w-gutter sm:pl-3 sm:pr-4">
         <span className={`${timeWeight[state]} ${timeText[state]}`}>
           {gutterLabel(task, now)}
         </span>

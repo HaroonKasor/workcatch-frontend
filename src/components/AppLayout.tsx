@@ -2,11 +2,12 @@ import { Outlet } from 'react-router-dom'
 import { AppRail } from './AppRail'
 import { useProjects, useTasks } from '../lib/api'
 import { timeStateOf } from '../lib/time'
+import { useNow } from '../lib/useNow'
 
 export default function AppLayout() {
   const tasks = useTasks()
   const projects = useProjects()
-  const now = new Date()
+  const now = useNow()
   const all = tasks.data ?? []
 
   const counts = {
