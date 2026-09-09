@@ -1,7 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
 import Dashboard from './routes/Dashboard'
+import Inbox from './routes/Inbox'
 import Login from './routes/Login'
+import TaskDetail from './routes/TaskDetail'
+import Tasks from './routes/Tasks'
 
 export default function App() {
   return (
@@ -11,6 +14,9 @@ export default function App() {
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<Navigate to="/app/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="inbox" element={<Inbox />} />
+          <Route path="tasks" element={<Tasks />} />
+          <Route path="tasks/:id" element={<TaskDetail />} />
         </Route>
         <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
       </Routes>
