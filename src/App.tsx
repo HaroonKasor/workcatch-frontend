@@ -1,4 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import AppLayout from './components/AppLayout'
+import Dashboard from './routes/Dashboard'
 import Login from './routes/Login'
 
 export default function App() {
@@ -6,8 +8,11 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        {/* Sprint 1 replaces this with the authenticated shell. */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/app" element={<AppLayout />}>
+          <Route index element={<Navigate to="/app/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   )
