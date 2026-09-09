@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { projectDot } from '../lib/style'
 import type { Project } from '../lib/types'
 
@@ -78,18 +78,25 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
 function Item({ to, label, count, alert, dot }: {
   to: string; label: string; count?: number; alert?: boolean; dot?: string
 }) {
+  const { pathname, search } = useLocation()
+  const [toPath, toSearch = ''] = to.split('?')
+
+  // NavLink ignores the query string, so /app/tasks, /app/tasks?filter=overdue
+  // and /app/tasks?filter=waiting would all light up at once. Compare both parts.
+  const isActive =
+    pathname === toPath &&
+    new URLSearchParams(search).get('filter') === (new URLSearchParams(toSearch).get('filter'))
+
   return (
-    <NavLink
+    <Link
       to={to}
-      end
-      className={({ isActive }) =>
-        [
-          'flex items-center justify-between gap-2 rounded-control px-3 py-1.5',
-          // A solid token, not ink at 6% opacity: one value the whole system can
-          // point at, and one place to change it.
-          isActive ? 'bg-selected text-ink font-medium' : 'text-ink-2 hover:bg-ink/[0.03]',
-        ].join(' ')
-      }
+      aria-current={isActive ? 'page' : undefined}
+      className={[
+        'flex items-center justify-between gap-2 rounded-control px-3 py-1.5',
+        // A solid token, not ink at 6% opacity: one value the whole system can
+        // point at, and one place to change it.
+        isActive ? 'bg-selected text-ink font-medium' : 'text-ink-2 hover:bg-ink/[0.03]',
+      ].join(' ')}
     >
       <span className="flex min-w-0 items-center gap-2.5 text-[13px]">
         {dot && <span className={`size-1.5 shrink-0 rounded-full ${dot}`} aria-hidden />}
@@ -100,6 +107,6 @@ function Item({ to, label, count, alert, dot }: {
           {count}
         </span>
       )}
-    </NavLink>
+    </Link>
   )
 }
