@@ -10,13 +10,6 @@ dist-ssr/
 .env.*
 !.env.example
 
-# playwright
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-tests/visual/__actual__/
-
 # tooling
 .omc/
 .idea/
@@ -27,6 +20,5 @@ tests/visual/__actual__/
 .DS_Store
 Thumbs.db
 
-# Figma reference exports. Re-pull from the file with get_screenshot when you
-# need to compare; a committed copy goes stale without anyone noticing.
-tests/visual/__figma__/
+# assistant tooling
+.claude/

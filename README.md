@@ -8,7 +8,7 @@ The API lives in a separate repository: **workcatch-api**.
 ## Stack
 
 Vite · React · TypeScript · Tailwind v4 · React Router · TanStack Query ·
-react-hook-form + zod · Playwright
+react-hook-form + zod
 
 No component library. The design is a system of its own (10 component sets,
 47 variants in Figma) and a prebuilt library would fight it the whole way.
@@ -22,6 +22,14 @@ No icon library either — the design uses type and rules, not icons.
 `/api` proxies to `http://127.0.0.1:8081`, so run the API alongside. The proxy
 keeps the browser on one origin locally, matching production, so cookie and
 CSRF behaviour is the same in both.
+
+## The AI panel on the local store
+
+With `VITE_API=0` the AI endpoints (`backend/docs/ai-api.md`) are answered by
+`src/lib/aiMock.ts` from the tasks in the browser. To see a state the panel must
+handle, set `localStorage['wc.ai.mock']` to one of `ok`, `unavailable`,
+`disabled`, `quota`, `busy`, `failed`, `slow` (a 60-second answer, for the หยุด
+button) or `empty` (the overview card's 204), then reload.
 
 ## The design system
 
@@ -41,17 +49,17 @@ the one property the design exists to provide.
 
 ## Checking a screen against Figma
 
-    npm run test:visual     # renders each screen at fixed viewports
-    npm run test:a11y       # keyboard order, focus, no horizontal scroll
-
-`tests/visual/__actual__/` holds what the browser rendered.
-`tests/visual/__figma__/` holds the exported reference.
-Compare them side by side. Do not chase pixel equality — a browser and a design
+Open the screen on the dev server at 1440px and 390px wide and put it next to
+the Figma frame. Check it before merging: there are no automated tests for
+screens in this repository (`npm test` covers only the pure `#project` tag
+rules in `src/lib/projectTag.ts`, which must stay identical to the backend's
+`ProjectTag`). Do not chase pixel equality — a browser and a design
 tool never rasterise Thai text identically. Look for real differences: wrong
 spacing, wrong weight, wrong colour, text that wraps differently.
 
 A screenshot cannot prove keyboard order, focus visibility, or Thai line
-wrapping. That is what `tests/a11y` is for.
+wrapping, so check those by hand too: Tab through the screen, and make sure
+nothing scrolls sideways at 390px.
 
 Node ids for every screen: `docs/route-to-figma.md`.
 

@@ -1,3 +1,8 @@
+import { useState } from 'react'
+import { SkeletonPageHeader, SkeletonRows, SkeletonScreen } from '../../components/Skeleton'
+import { useToast } from '../../components/Toast'
+import { ApiError, useAdminNotifications, useRetryAdminNotification } from '../../lib/api'
+
 /**
  * /admin/notifications — Figma node 52:935
  *
@@ -10,27 +15,7 @@
  * of admin. A failure list showing message bodies would leak every user's work.
  */
 
-interface Row {
-  at: string
-  user: string
-  taskId: string
-  state: 'SENT' | 'PENDING' | 'CANCELLED' | 'FAILED_RETRYABLE' | 'FAILED_FINAL'
-  note: string
-  code: string
-  attempt: string
-}
-
-const LOG: Row[] = [
-  { at: 'เมื่อวาน 15:02', user: 'วิชัย เกษมสุข', taskId: 'tsk_8f21c4', state: 'FAILED_RETRYABLE', note: 'กำลังรอลองใหม่รอบที่ 3', code: '500', attempt: '2 / 3' },
-  { at: '5 ก.ย. 14:12', user: 'วิชัย เกษมสุข', taskId: 'tsk_3ac907', state: 'FAILED_FINAL', note: 'ปัญหาสิทธิ์การส่ง ไม่ลองใหม่', code: '403', attempt: '1 / 3' },
-  { at: '3 ก.ย. 08:00', user: 'ปกรณ์ ธนาวัฒน์', taskId: 'tsk_71bd55', state: 'FAILED_FINAL', note: 'เกินโควตารายเดือน ไม่ลองใหม่', code: '429', attempt: '1 / 3' },
-  { at: 'วันนี้ 15:00', user: 'สมชาย ใจดี', taskId: 'tsk_9e04a1', state: 'PENDING', note: 'รอถึงเวลาส่ง', code: '—', attempt: '0 / 3' },
-  { at: 'วันนี้ 08:40', user: 'สมชาย ใจดี', taskId: 'tsk_9e04a1', state: 'SENT', note: 'LINE รับคำขอแล้ว', code: '200', attempt: '1 / 3' },
-  { at: 'วันนี้ 08:00', user: 'สุดา วงศ์ไทย', taskId: 'tsk_44c1d8', state: 'SENT', note: 'LINE รับคำขอแล้ว', code: '200', attempt: '1 / 3' },
-  { at: '6 ก.ย. 17:30', user: 'มานพ ศรีสุข', taskId: 'tsk_0b7742', state: 'CANCELLED', note: 'ปิดงานก่อนถึงเวลาเตือน', code: '—', attempt: '0 / 3' },
-]
-
-const TONE: Record<Row['state'], string> = {
+const TONE: Record<string, string> = {
   SENT: 'text-ink-2',
   PENDING: 'text-ink-3',
   CANCELLED: 'text-ink-3',
@@ -38,7 +23,32 @@ const TONE: Record<Row['state'], string> = {
   FAILED_FINAL: 'text-error',
 }
 
+type StateFilter = 'all' | 'failedRetryable' | 'failedFinal' | 'sent' | 'pending'
+
+const FILTERS: { key: StateFilter; label: string; state?: string }[] = [
+  { key: 'failedRetryable', label: 'ต้องดู', state: 'FAILED_RETRYABLE' },
+  { key: 'failedFinal', label: 'ส่งใหม่ไม่ได้', state: 'FAILED_FINAL' },
+  { key: 'sent', label: 'ส่งแล้ว', state: 'SENT' },
+  { key: 'pending', label: 'รอส่ง', state: 'PENDING' },
+  { key: 'all', label: 'ทั้งหมด' },
+]
+
 export default function AdminNotifications() {
+  const toast = useToast()
+  const [filter, setFilter] = useState<StateFilter>('failedRetryable')
+  const activeFilter = FILTERS.find((item) => item.key === filter)
+  const notifications = useAdminNotifications(activeFilter?.state)
+  const retry = useRetryAdminNotification()
+
+  // The default view is "needs attention", because an operator opens this screen
+  // when something did not arrive, not to admire the successes.
+  if (notifications.isPending) return <NotificationsSkeleton />
+  if (notifications.isError || !notifications.data) {
+    return <p role="alert" className="t-body text-error">โหลดบันทึกการแจ้งเตือนไม่สำเร็จ</p>
+  }
+
+  const rows = notifications.data
+
   return (
     <>
       <p className="t-caption text-ink-3">โหมดผู้ดูแลระบบ</p>
@@ -48,41 +58,61 @@ export default function AdminNotifications() {
       </p>
 
       <div className="mt-6 flex flex-wrap gap-2">
-        <Filter label="ช่วงเวลา" value="7 วันล่าสุด" />
-        <Filter label="ผู้ใช้" value="ทั้งหมด" />
-        <Filter label="สถานะ" value="ล้มเหลว + รอส่ง" active />
-        <Filter label="รหัสผลลัพธ์" value="ทั้งหมด" />
+        {FILTERS.map((item) => (
+          <Filter
+            key={item.key}
+            label={item.label}
+            active={filter === item.key}
+            onClick={() => setFilter(item.key)}
+          />
+        ))}
       </div>
 
       <div className="mt-4 overflow-x-auto rounded-sheet border border-rule bg-sheet">
         <table className="w-full min-w-[900px] text-left">
           <thead>
             <tr className="border-b border-rule">
-              <Th>เวลา</Th><Th>ผู้ใช้</Th><Th>รหัสงาน</Th><Th>สถานะ</Th><Th>รหัสผลลัพธ์</Th><Th>ครั้งที่</Th><Th>จัดการ</Th>
+              <Th>เวลา</Th>
+              <Th>ผู้ใช้</Th>
+              <Th>รหัสงาน</Th>
+              <Th>สถานะ</Th>
+              <Th>รหัสผลลัพธ์</Th>
+              <Th>ครั้งที่</Th>
+              <Th>จัดการ</Th>
             </tr>
           </thead>
           <tbody>
-            {LOG.map((r, i) => {
-              const retryable = r.state === 'FAILED_RETRYABLE' || r.state === 'FAILED_FINAL'
+            {rows.map((r, i) => {
+              // Retryable failures are automatically retried; only final failures accept a manual retry.
+              const retryable = r.state === 'FAILED_FINAL'
               return (
-                <tr key={`${r.taskId}-${i}`} className={i < LOG.length - 1 ? 'border-b border-rule-soft' : ''}>
-                  <td className="t-caption px-5 py-3 text-ink-3">{r.at}</td>
-                  <td className="px-5 py-3 text-[12px] text-ink-2">{r.user}</td>
+                <tr key={r.id} className={i < rows.length - 1 ? 'border-b border-rule-soft' : ''}>
+                  <td className="t-caption px-5 py-3 text-ink-3">{stamp(r.scheduledFor ?? r.updatedAt)}</td>
+                  <td className="px-5 py-3 text-[12px] text-ink-2">{r.userDisplayName ?? 'ไม่ทราบชื่อผู้ใช้'}</td>
                   <td className="t-caption px-5 py-3 text-ink-2">{r.taskId}</td>
                   <td className="px-5 py-3">
-                    <span className={`block font-mono text-[10px] font-medium ${TONE[r.state]}`}>{r.state}</span>
-                    <span className="t-meta block text-ink-3">{r.note}</span>
+                    <span className={`block font-mono text-[12px] font-medium ${TONE[r.state]}`}>{r.state}</span>
                   </td>
-                  <td className={`t-caption px-5 py-3 ${r.code === '200' || r.code === '—' ? 'text-ink-3' : TONE[r.state]}`}>
-                    {r.code}
+                  <td className={`t-caption px-5 py-3 ${r.lastStatusCode === null ? 'text-ink-3' : TONE[r.state]}`}>
+                    {r.lastStatusCode ?? '—'}
                   </td>
-                  <td className="t-caption px-5 py-3 text-ink-3">{r.attempt}</td>
+                  <td className="t-caption px-5 py-3 text-ink-3">{r.attempts} / {r.maxAttempts}</td>
                   <td className="px-5 py-3">
                     <button
                       type="button"
-                      disabled={!retryable}
-                      className={`rounded-control px-3 py-1.5 text-[11px] font-medium ${
-                        retryable ? 'border border-rule bg-sheet' : 'text-ink-3 opacity-35'
+                      disabled={!retryable || retry.isPending}
+                      onClick={() => {
+                        retry.mutate(r.id, {
+                          onSuccess: () => toast({ title: 'เข้าคิวส่งใหม่แล้ว', tone: 'success' }),
+                          onError: (error) => toast({
+                            title: 'ส่งใหม่ไม่สำเร็จ',
+                            body: error instanceof ApiError ? error.message : undefined,
+                            tone: 'error',
+                          }),
+                        })
+                      }}
+                      className={`rounded-control px-3 py-1.5 text-[12px] font-medium ${
+                        retryable && !retry.isPending ? 'border border-rule bg-sheet' : 'text-ink-3 opacity-35'
                       }`}
                     >
                       {retryable ? 'ส่งใหม่' : 'ส่งใหม่ไม่ได้'}
@@ -93,13 +123,14 @@ export default function AdminNotifications() {
             })}
           </tbody>
         </table>
+        {rows.length === 0 && <p className="px-5 py-6 text-[12.5px] text-ink-3">ไม่มีรายการแจ้งเตือน</p>}
       </div>
 
       <div className="mt-4 rounded-sheet border border-rule px-5 py-4">
         <p className="t-label text-ink-3">กฎการส่งใหม่</p>
         <p className="t-meta mt-1.5 leading-relaxed text-ink-2">
-          กดส่งใหม่ได้เฉพาะรายการที่ยังไม่เคยส่งสำเร็จ ระบบใช้ retry key เดิมของรายการนั้น ผู้ใช้จึงไม่มีทางได้รับข้อความซ้ำ
-          แม้กดหลายครั้ง · หน้าต่างกันซ้ำของ LINE คือ 24 ชั่วโมงนับจากคำขอแรก เลยจากนั้นการส่งใหม่จะนับเป็นข้อความใหม่จริง
+          กดส่งใหม่ได้เฉพาะรายการที่ล้มเหลว ระบบจะนำรายการกลับเข้าคิวด้วยจำนวนครั้งลองส่งใหม่
+          และบันทึกการกระทำนี้ไว้ในประวัติผู้ดูแล
         </p>
       </div>
     </>
@@ -110,16 +141,36 @@ function Th({ children }: { children: React.ReactNode }) {
   return <th scope="col" className="t-label px-5 py-2.5 font-medium text-ink-3">{children}</th>
 }
 
-function Filter({ label, value, active }: { label: string; value: string; active?: boolean }) {
+function Filter({ label, active, onClick }: {
+  label: string
+  active?: boolean
+  onClick: () => void
+}) {
   return (
     <button
       type="button"
+      onClick={onClick}
+      aria-pressed={active}
       className={`flex items-center gap-2 rounded-control px-3 py-1.5 ${
         active ? 'bg-ink text-on-dark' : 'border border-rule bg-sheet'
       }`}
     >
-      <span className={`text-[11px] ${active ? 'opacity-75' : 'text-ink-3'}`}>{label}</span>
-      <span className="font-mono text-[10.5px] font-medium">{value}</span>
+      <span className={`text-[12px] ${active ? 'opacity-75' : 'text-ink-3'}`}>{label}</span>
     </button>
+  )
+}
+
+function stamp(value: string) {
+  return new Intl.DateTimeFormat('th-TH', {
+    timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(new Date(value))
+}
+
+function NotificationsSkeleton() {
+  return (
+    <SkeletonScreen label="กำลังโหลดบันทึกการแจ้งเตือน">
+      <SkeletonPageHeader />
+      <SkeletonRows rows={7} className="mt-6" />
+    </SkeletonScreen>
   )
 }

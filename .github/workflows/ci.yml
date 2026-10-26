@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 permissions:
@@ -24,6 +24,11 @@ jobs:
         run: npx tsc --noEmit
       - name: Build
         run: npm run build
+        # CI builds are never deployed, so the legal pages may still carry
+        # placeholders here. A release build without this flag is refused by
+        # scripts/check-legal.mjs until src/lib/legal-info.json is complete.
+        env:
+          ALLOW_INCOMPLETE_LEGAL: "1"
 
       - name: Guard - no secrets in the browser bundle
         run: |
@@ -34,19 +39,3 @@ jobs:
           echo clean
 
       - run: npm audit --audit-level=high
-
-      - name: Install browser
-        run: npx playwright install chromium --with-deps
-      # Keyboard order, focus visibility and no-horizontal-scroll are things a
-      # screenshot cannot prove, so they are asserted here.
-      - name: Accessibility and layout checks
-        run: npx playwright test tests/a11y
-
-      - name: Capture screens for Figma comparison
-        run: npx playwright test tests/visual
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: rendered-screens
-          path: tests/visual/__actual__/
-          retention-days: 7

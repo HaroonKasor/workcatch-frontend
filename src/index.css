@@ -28,17 +28,17 @@
   If you are reaching for --wc-time-* on something that is not about a deadline, stop.
 */
 :root {
-  --wc-surface-ground: #D7DBDC;
-  --wc-surface-sheet: #FCFCFB;
+  --wc-surface-ground: #F2F4F4;
+  --wc-surface-sheet: #FFFFFF;
   --wc-surface-on-dark: #FCFCFB;
-  --wc-surface-selected: #EEEEED;
+  --wc-surface-selected: #E7F6EF;
 
   --wc-ink-primary: #14181A;
-  --wc-ink-secondary: #5C666B;
-  --wc-ink-tertiary: #8B9599;
+  --wc-ink-secondary: #4B5458;
+  --wc-ink-tertiary: #676E71;
   --wc-ink-solid: #14181A;
 
-  --wc-rule-strong: #C4CACC;
+  --wc-rule-strong: #D5DADB;
   --wc-rule-soft: #E6E9E9;
 
   --wc-time-soon: #A8720E;
@@ -47,17 +47,63 @@
   --wc-time-waiting: #4E6D80;
   --wc-time-done: #8B9599;
 
+  /* Darker pairs, for a status label sitting on a tint of its own colour. The
+     plain hue fails 4.5:1 against its own 12% wash; these clear it. */
+  --wc-time-soon-strong: #90620C;
+  --wc-time-today-strong: #B83E0D;
+  /* Solid, pre-mixed washes rather than an alpha over the hue — Figma keeps
+     them as their own variables for the same reason (an unresolved alpha paint
+     rendered as solid colour there). Used for "something is still owed" boxes,
+     which is a statement about time. */
+  --wc-time-soon-wash: #F5EEE2;
+
+  /* LINE's chat background, for pictures of a LINE conversation only (the
+     landing page's flow). The same kind of exception as --wc-brand-line. */
+  --wc-surface-line-chat: #93A9B8;
+
   --wc-project-blue: #2563EB;
-  --wc-project-green: #059669;
   --wc-project-violet: #7C3AED;
   --wc-project-teal: #0891B2;
   --wc-project-indigo: #4F46E5;
   --wc-project-slate: #64748B;
 
+  /* Brand. Emerald is deliberately NOT LINE's green: the product sends LINE
+     messages, it is not a LINE product. --wc-brand-line is the only place LINE's
+     own green is allowed, and only to represent LINE itself.
+     Budget: ~85% neutral, ~10% brand, ~5% status. Black stays the primary
+     button; green marks committing actions and success. Do not turn every
+     black button green. */
+  --wc-brand-emerald: #0A8F5A;
+  --wc-brand-strong: #087647;
+  --wc-brand-mint: #E7F6EF;
+  --wc-brand-line: #06C755;
+  /* Emerald clears 4.5:1 on ink/solid only just — 4.33:1. This is the pair for
+     brand marks sitting on a dark surface (4.64:1), the mirror of the way
+     brand/strong pairs with emerald on a light one. */
+  --wc-brand-on-dark: #0B955E;
+
   /* Aliases. state/error deliberately points at time/late: it is allowed in forms
      and alert banners only, never inside the task ledger. */
   --wc-state-error: var(--wc-time-late);
   --wc-state-focus: var(--wc-ink-primary);
+
+  /* Elevation for the hover/press convention. Ink at low alpha rather than a
+     black shadow, so the lift reads as the same paper stack the sheets are cut
+     from and never as a new colour. */
+  --wc-lift-shadow: 0 2px 6px rgba(20, 24, 26, 0.10), 0 1px 2px rgba(20, 24, 26, 0.05);
+  --wc-press-shadow: 0 1px 2px rgba(20, 24, 26, 0.07);
+
+  /* The wash a skeleton block is drawn in. One value so every placeholder in
+     the app is the same grey. */
+  --wc-skeleton: rgba(20, 24, 26, 0.08);
+  --wc-skeleton-peak: rgba(20, 24, 26, 0.13);
+
+  /* The 4% wash an editable field takes when it is pointed at — Figma 282:12.
+     Written out the way --wc-skeleton is rather than composed with color-mix,
+     because a color-mix over a var() needs a fallback and the only fallback a
+     compiler can produce is the solid colour, which would paint a field of text
+     black on the one browser that could not do the mix. */
+  --wc-edit-wash: rgba(20, 24, 26, 0.04);
 }
 
 @theme {
@@ -80,11 +126,21 @@
   --color-time-done: var(--wc-time-done);
 
   --color-project-blue: var(--wc-project-blue);
-  --color-project-green: var(--wc-project-green);
   --color-project-violet: var(--wc-project-violet);
   --color-project-teal: var(--wc-project-teal);
   --color-project-indigo: var(--wc-project-indigo);
   --color-project-slate: var(--wc-project-slate);
+
+  --color-time-soon-strong: var(--wc-time-soon-strong);
+  --color-time-today-strong: var(--wc-time-today-strong);
+  --color-time-soon-wash: var(--wc-time-soon-wash);
+  --color-line-chat: var(--wc-surface-line-chat);
+
+  --color-brand: var(--wc-brand-emerald);
+  --color-brand-strong: var(--wc-brand-strong);
+  --color-brand-on-dark: var(--wc-brand-on-dark);
+  --color-mint: var(--wc-brand-mint);
+  --color-line: var(--wc-brand-line);
 
   --color-error: var(--wc-state-error);
 
@@ -108,11 +164,15 @@
   --radius-control: 8px;
   --radius-pill: 9999px;
 
-  --spacing-row: 64px;
+  --spacing-row: 48px;
   --spacing-row-compact: 48px;
   --spacing-rail: 232px;
   --spacing-gutter: 112px;
-  --spacing-content: 1128px;
+  /* Outer bound of the content column INCLUDING its 40px gutters, because
+     Tailwind's max-width is border-box. Figma: content spans x=272..1400 inside
+     a 1440 frame, i.e. 1128 of drawable width with 40 either side. Setting the
+     token to 1128 silently shrank every screen by 80px. */
+  --spacing-content: 1208px;
 }
 
 @layer base {
@@ -121,7 +181,7 @@
     background: var(--wc-surface-ground);
     color: var(--wc-ink-primary);
     font-family: "Anuphan", system-ui, sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.5;
   }
   /* Focus is never a time colour — focus has nothing to do with urgency. */
@@ -132,7 +192,111 @@
   }
 }
 
-/* Text ramp — mirrors the 12 text styles in Figma exactly. */
+/* Design scale.
+ *
+ * Every screen is drawn against a 1440 frame. On a 1920 display that same
+ * drawing occupies proportionally less of the screen, so 14px body text reads
+ * small and the whole thing only feels right at 120% browser zoom. `zoom` here
+ * reproduces exactly what that browser zoom does - including keeping the type,
+ * spacing and hairlines in the same relation to each other - while leaving the
+ * 1440 reference width at 1.0, so the layout still matches Figma pixel for pixel
+ * at the width it was measured.
+ *
+ * Scaling the type ramp instead would have pulled text away from the fixed pixel
+ * geometry of the time rule, which is a measured drawing rather than a set of
+ * tokens.
+ */
+:root { --wc-zoom: 1; }
+@media (min-width: 1600px) { :root { --wc-zoom: 1.1; } }
+@media (min-width: 1800px) { :root { --wc-zoom: 1.2; } }
+
+@layer components {
+  .wc-scale { zoom: var(--wc-zoom); }
+
+  /* Public pages enter as a single sheet, rather than making each block move
+     independently. The small rise acknowledges an in-app route change without
+     delaying the page a person clicked to read. */
+  .wc-page-enter { animation: wc-page-enter 220ms ease-out both; }
+
+  @keyframes wc-page-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wc-page-enter { animation: none; }
+  }
+
+  /* Landing page motion. The page itself enters with wc-page-enter above;
+     these add the two things a first-time visitor reads by movement:
+     the headline arriving in order, and each section settling in as it
+     scrolls into view.
+     - .wc-rise: once, on load, staggered by --wc-delay.
+     - [data-reveal]: hidden only under .wc-motion, which Landing.tsx sets
+       after mount and never under reduced motion, so a page without JS or
+       without motion shows everything at once instead of nothing.
+     - .wc-pop: a LINE bubble landing after its card, --wc-pop-delay later.
+     One easing everywhere: fast out, gentle settle, nothing that bounces
+     back past its resting place. */
+  .wc-rise {
+    animation: wc-rise 560ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: var(--wc-delay, 0ms);
+  }
+
+  @keyframes wc-rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  [data-reveal] {
+    transition:
+      opacity 600ms cubic-bezier(0.2, 0.7, 0.2, 1),
+      transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: var(--wc-delay, 0ms);
+  }
+
+  .wc-motion [data-reveal]:not([data-shown]) {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  .wc-motion [data-reveal]:not([data-shown]) .wc-pop { opacity: 0; }
+
+  .wc-motion [data-shown] .wc-pop {
+    animation: wc-pop 420ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+    animation-delay: var(--wc-pop-delay, 300ms);
+  }
+
+  @keyframes wc-pop {
+    from { opacity: 0; transform: translateY(6px) scale(0.94); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wc-rise, .wc-motion [data-shown] .wc-pop { animation: none; }
+    [data-reveal] { transition: none; }
+  }
+
+  /* The nav rail scrolls only because a real browser window is shorter than the
+     900px frame the rail was drawn against - by 50px or so, not by a screenful.
+     A scrollbar for that is pure noise on a surface that is otherwise nothing
+     but hairlines, so the bar is hidden while the scrolling itself stays: a
+     long project list must still be reachable. */
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
+  /* Viewport units resolve against the UNZOOMED viewport, so anything sized in
+     dvh inside a zoomed subtree overshoots by exactly the zoom factor and leaves
+     a permanent scrollbar. Divide it back out. */
+  .h-viewport { height: calc(100dvh / var(--wc-zoom)); }
+  .min-h-viewport { min-height: calc(100dvh / var(--wc-zoom)); }
+}
+
+/* Text ramp — mirrors the 12 text styles in Figma exactly.
+ *
+ * The floor is 12px for anything a person has to read: body 14, helper and
+ * caption text 12. Earlier revisions went down to 9–11.5px and read as
+ * decoration on a phone. The one exception is the time rule's hour ticks at
+ * 11px: they are an axis, not text, and the rule's geometry is measured. */
 @layer components {
   .t-page-title { font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1.24; letter-spacing: -0.6px; }
   .t-section    { font-family: var(--font-display); font-weight: 500; font-size: 17px; line-height: 1.30; letter-spacing: -0.2px; }
@@ -143,11 +307,128 @@
   .t-task-high   { font-weight: 500; font-size: 14px; line-height: 1.35; }
   .t-task-normal { font-weight: 400; font-size: 14px; line-height: 1.35; }
 
-  .t-body { font-size: 13px; line-height: 1.5; }
-  .t-meta { font-size: 11px; line-height: 1.3; }
+  .t-body { font-size: 14px; line-height: 1.45; }
+  /* Two 12px roles in Figma, not one: 1.30 rides under a task title where the
+     line has to sit tight, 1.45 stands alone as a note or a legend. */
+  .t-meta { font-size: 12px; line-height: 1.35; }
+  .t-note { font-size: 12px; line-height: 1.5; }
 
-  .t-time     { font-family: var(--font-mono); font-weight: 400; font-size: 11.5px; line-height: 1.45; }
-  .t-time-em  { font-family: var(--font-mono); font-weight: 600; font-size: 11.5px; line-height: 1.45; }
-  .t-caption  { font-family: var(--font-mono); font-weight: 400; font-size: 10px; line-height: 1.4; letter-spacing: 0.5px; }
-  .t-label    { font-family: var(--font-mono); font-weight: 500; font-size: 9px;  line-height: 1.4; letter-spacing: 1.1px; }
+  .t-time     { font-family: var(--font-mono); font-weight: 400; font-size: 12.5px; line-height: 1.45; }
+  .t-time-em  { font-family: var(--font-mono); font-weight: 600; font-size: 12.5px; line-height: 1.45; }
+  .t-caption  { font-family: var(--font-mono); font-weight: 400; font-size: 12px; line-height: 1.45; letter-spacing: 0.3px; }
+  .t-label    { font-family: var(--font-mono); font-weight: 500; font-size: 12px; line-height: 1.45; letter-spacing: 0.6px; }
+
+  /* The eyebrow above a page title. */
+  .t-eyebrow   { font-family: var(--font-mono); font-weight: 400; font-size: 12px; line-height: 1.45; letter-spacing: 0.3px; }
+  /* Time-rule specific. The "now" mark is heavier and its clock is larger than
+     anything else on the rule, which is the whole point of it. */
+  .t-tick      { font-family: var(--font-mono); font-weight: 400; font-size: 11px; line-height: 1.45; }
+  .t-now       { font-family: var(--font-mono); font-weight: 600; font-size: 11px; line-height: 1.45; letter-spacing: 0.8px; }
+  .t-now-clock { font-family: var(--font-mono); font-weight: 600; font-size: 12px; line-height: 1.45; }
+}
+
+/* Dimensional press.
+ *
+ * One convention for every button, chip and clickable card, so the whole app
+ * answers the pointer the same way. Current practice for this is a very short
+ * ease-out transform paired with an elevation change rather than a colour
+ * swap — colour is already spoken for here (warm = time, cool = project), so a
+ * hover that recoloured anything would be saying something about the data.
+ *
+ * 140ms sits inside the 100–200ms band that reads as "the control responded"
+ * rather than "the control is animating". The lift is 1px, not 3: at 13px body
+ * text against hairline rules, more than that makes the page feel loose.
+ *
+ * Press returns to 0 and drops to the smaller shadow, so the click has a floor
+ * to hit. Disabled controls do neither — a lift on a button that cannot fire is
+ * a lie about affordance.
+ *
+ * `@media (hover: hover)` keeps the lift off touch screens, where :hover sticks
+ * after a tap and leaves a raised button behind. `prefers-reduced-motion` kills
+ * the movement entirely: the shadow still marks the state, so nothing is lost
+ * for a person who asked not to be moved.
+ */
+@layer components {
+  .wc-lift {
+    transition:
+      transform 140ms ease-out,
+      box-shadow 140ms ease-out,
+      border-color 140ms ease-out,
+      background-color 140ms ease-out;
+  }
+
+  @media (hover: hover) {
+    .wc-lift:hover:not(:disabled):not([aria-disabled='true']) {
+      transform: translateY(-1px);
+      box-shadow: var(--wc-lift-shadow);
+    }
+  }
+
+  .wc-lift:active:not(:disabled):not([aria-disabled='true']) {
+    transform: translateY(0);
+    box-shadow: var(--wc-press-shadow);
+  }
+
+  /* Focus stays exactly as it was: the ring is the keyboard user's state and
+     must not compete with a shadow. */
+  .wc-lift:focus-visible {
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wc-lift,
+    .wc-lift:hover,
+    .wc-lift:active {
+      transition: none;
+      transform: none;
+    }
+  }
+
+  /* แก้ในที่ — Figma 282:2.
+   *
+   * The mark that says a field can be pressed. Hidden until the field is
+   * pointed at or focused, because the task screen carries ten editable fields
+   * and ten permanent marks would turn a document back into a form.
+   *
+   * On a touch screen there is no hover to reveal it, so under (hover: none)
+   * the mark stays on AND the 4% wash is painted permanently: the one
+   * affordance this design has cannot be the one thing a phone cannot draw.
+   * Tailwind's own `hover:` variant is already gated on (hover: hover) in v4,
+   * so the two never fight, and a tap never leaves a stuck highlight behind.
+   */
+  .wc-edit-mark {
+    opacity: 0;
+    transition: opacity 140ms ease-out;
+  }
+
+  .wc-editable:hover .wc-edit-mark,
+  .wc-editable:focus-visible .wc-edit-mark {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .wc-edit-mark { opacity: 1; }
+    .wc-editable { background-color: var(--wc-edit-wash); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wc-edit-mark { transition: none; }
+  }
+
+  /* Loading placeholder. A skeleton, never a spinner: a spinner says "wait"
+     without saying what for, while a skeleton that mirrors the real row heights
+     means the page does not jump when the content lands. */
+  .wc-skeleton {
+    background: var(--wc-skeleton);
+    animation: wc-skeleton-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes wc-skeleton-pulse {
+    0%, 100% { background-color: var(--wc-skeleton); }
+    50%      { background-color: var(--wc-skeleton-peak); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wc-skeleton { animation: none; }
+  }
 }

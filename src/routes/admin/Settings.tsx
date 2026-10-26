@@ -1,93 +1,162 @@
+import { useRef, useState } from 'react'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { Skeleton, SkeletonPageHeader, SkeletonScreen } from '../../components/Skeleton'
+import { useToast } from '../../components/Toast'
+import {
+  type AdminSetting,
+  type AdminConfig,
+  useAdminConfig,
+  useAdminMessageTemplates,
+  useAdminSettings,
+  useUpdateAdminSetting,
+} from '../../lib/api'
+
 /**
  * /admin/settings — Figma node 53:957
  *
- * The message preview is the part that earns its place. FR-ADM-07 asks for a
- * preview before activating a template, and the reason is practical: Thai text
+ * The message preview is the part that earns its place. The reason is practical: Thai text
  * wraps differently from English, and LINE only shows the first line in a phone
  * notification. Seeing the rendered bubble is the only way to catch a template
  * that reads fine in the editor and badly on a phone.
+ *
+ * The configuration is deliberately read-only: these values come from deployed
+ * code, so showing an editable-looking table would promise a change this API
+ * cannot make.
  */
 
-const DEFAULTS = [
-  ['เขตเวลา', 'Asia/Bangkok (UTC+7)'],
-  ['เตือนก่อนครบกำหนด', '1 วัน และ 2 ชั่วโมง'],
-  ['เวลาสรุปประจำวัน', '08:00'],
-  ['วันติดตามงานที่รอคนอื่น', '3 วัน'],
-  ['เตือนงานค้างในกล่องรับงาน', '24 ชั่วโมง'],
-  ['นโยบายลองส่งใหม่', '1, 5, 30 นาที · สูงสุด 3 ครั้ง'],
-  ['เก็บงานที่ลบไว้', '30 วัน'],
-  ['ขนาดไฟล์แนบสูงสุด', '10 MB ต่อไฟล์'],
-]
+/**
+ * Each template is rendered by the server against a deliberately fake sample.
+ * Selecting a row changes the real preview text, so the pane remains useful for
+ * checking Thai line wrapping without exposing a user's work.
+ */
 
-const TEMPLATES = [
-  { code: 'reminder_before', desc: 'ก่อนถึงกำหนดส่ง', ver: 'v4', on: true },
-  { code: 'reminder_due', desc: 'ถึงกำหนดส่งแล้ว', ver: 'v3', on: true },
-  { code: 'digest_overdue', desc: 'สรุปงานเกินกำหนดรายวัน', ver: 'v2', on: true },
-  { code: 'digest_daily', desc: 'สรุปงานประจำวัน', ver: 'v5', on: true },
-  { code: 'waiting_followup', desc: 'ถึงวันติดตามงานที่รอ', ver: 'v1', on: true },
-  { code: 'inbox_aging', desc: 'งานค้างในกล่องรับงาน', ver: 'v2', on: false },
-]
-
-const FLAGS = [
-  { name: 'เปิดรับสมัครผู้ใช้ใหม่', why: 'ปิดไว้ระหว่างทดลองใช้เอง', on: false },
-  { name: 'ให้บอทตอบเมื่อผู้ใช้ทัก', why: 'ข้อความตอบกลับไม่นับโควตา LINE', on: true },
-  { name: 'เตือนผ่านเว็บ (Web Push)', why: 'ใช้แทน LINE ได้ฟรี ลดโควตา', on: true },
-  { name: 'โหมดหยุดส่งชั่วคราว', why: 'เปิดเมื่อโควตาใกล้หมดหรือ LINE ล่ม', on: false },
-  { name: 'billing_enabled', why: 'เปิดหน้าอัปเกรดให้กดได้จริง', on: false },
-]
+const FLAG_META: Record<string, { name: string; why: string }> = {
+  sending_paused: { name: 'โหมดหยุดส่งชั่วคราว', why: 'เปิดเมื่อโควตาใกล้หมดหรือ LINE ล่ม' },
+  secrets_enabled: { name: 'เปิดใช้ข้อมูลเข้าสู่ระบบแบบซ่อนค่า', why: 'อนุญาตให้ใช้ข้อมูลเข้าสู่ระบบที่เข้ารหัสไว้' },
+  billing_enabled: { name: 'เปิดหน้าอัปเกรดให้กดได้จริง', why: 'ผู้ใช้กดปุ่มอัปเกรดได้ แต่ยังไม่มีระบบชำระเงินจริง' },
+}
 
 export default function AdminSettings() {
+  const toast = useToast()
+  const settings = useAdminSettings()
+  const config = useAdminConfig()
+  const templates = useAdminMessageTemplates()
+  const updateSetting = useUpdateAdminSetting()
+  const [confirming, setConfirming] = useState<AdminSetting | null>(null)
+  // A template must be previewable. The preview pane is already on this screen,
+  // so "ดูตัวอย่าง" selects which
+  // template it renders rather than opening yet another window.
+  const [previewing, setPreviewing] = useState('')
+  const current = templates.data?.find((template) => template.code === previewing) ?? templates.data?.[0]
+  const previewRef = useRef<HTMLElement>(null)
+
+  // Below 1280px the preview column stacks under a long settings list, so
+  // pressing ดูตัวอย่าง changed something that was off screen — indistinguishable
+  // from a dead button. Bring it to the reader instead.
+  function showPreview(code: string) {
+    setPreviewing(code)
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    previewRef.current?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'nearest' })
+  }
+
+  if (settings.isPending && config.isPending && templates.isPending) return <AdminSettingsSkeleton />
+
+  const flags = (settings.data ?? []).filter((setting) => setting.key in FLAG_META)
+  const defaults = config.data ? configRows(config.data) : []
+
   return (
     <>
       <p className="t-caption text-ink-3">โหมดผู้ดูแลระบบ</p>
       <h1 className="t-page-title mt-1">ตั้งค่าระบบ</h1>
       <p className="t-body mt-2 text-ink-2">
-        ค่าเหล่านี้เป็นค่าเริ่มต้นของผู้ใช้ใหม่ ผู้ใช้เดิมที่แก้เองไว้แล้วจะไม่ถูกเขียนทับ
+        ค่าเหล่านี้อ่านจากการตั้งค่าระบบจริงและแม่แบบข้อความที่ระบบใช้ส่ง
       </p>
+      {(settings.isError || config.isError || templates.isError) && (
+        <p role="alert" className="mt-4 rounded-control border border-error px-4 py-3 text-[12px] text-error">
+          โหลดการตั้งค่าระบบบางส่วนไม่สำเร็จ
+        </p>
+      )}
 
       <div className="mt-7 grid gap-8 xl:grid-cols-[1fr_344px]">
         <div className="min-w-0 space-y-8">
           <Section title="ค่าเริ่มต้นของระบบ">
-            {DEFAULTS.map(([k, v], i) => (
-              <div key={k} className={`flex items-center justify-between gap-4 px-5 py-3 ${i < DEFAULTS.length - 1 ? 'border-b border-rule-soft' : ''}`}>
+            <p className="t-meta border-b border-rule-soft px-5 py-3 text-ink-3">
+              ค่าเหล่านี้กำหนดในโค้ด เปลี่ยนได้ด้วยการ deploy
+            </p>
+            {config.isPending && <Skeleton w="100%" h="144px" />}
+            {defaults.map(([k, v], i) => (
+              <div
+                key={k}
+                className={`flex items-center justify-between gap-4 px-5 py-3 ${
+                  i < defaults.length - 1 ? 'border-b border-rule-soft' : ''
+                }`}
+              >
                 <span className="text-[13px] text-ink-2">{k}</span>
-                <span className="font-mono text-[11px]">{v}</span>
+                <span className="font-mono text-[12px]">{v}</span>
               </div>
             ))}
+            {!config.data && !config.isPending && (
+              <p className="px-5 py-5 text-[12.5px] text-ink-3">ไม่มีข้อมูลค่าเริ่มต้น</p>
+            )}
           </Section>
 
-          <Section title="แม่แบบข้อความ" note="แก้แล้วเวอร์ชันเพิ่มขึ้นอัตโนมัติ">
-            {TEMPLATES.map((t, i) => (
-              <div key={t.code} className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 ${i < TEMPLATES.length - 1 ? 'border-b border-rule-soft' : ''}`}>
-                <span className="t-caption w-36 shrink-0 text-ink-2">{t.code}</span>
-                <span className="min-w-0 flex-1 text-[12.5px]">{t.desc}</span>
+          <Section title="แม่แบบข้อความ" note="ตัวอย่างจากตัวประกอบข้อความจริง">
+            {templates.isPending && <Skeleton w="100%" h="144px" />}
+            {(templates.data ?? []).map((t, i) => (
+              <div
+                key={t.code}
+                className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 ${
+                  i < (templates.data?.length ?? 0) - 1 ? 'border-b border-rule-soft' : ''
+                } ${(previewing || current?.code) === t.code ? 'bg-ink/[0.03]' : ''}`}
+              >
+                <span title={t.code} className="t-caption w-44 shrink-0 truncate text-ink-2">{t.code}</span>
+                <span className="min-w-0 flex-1 text-[12.5px]">{t.description}</span>
                 <span className="t-caption shrink-0 text-ink-3">LINE</span>
-                <span className="t-caption w-6 shrink-0 text-ink-3">{t.ver}</span>
-                <button type="button" className="shrink-0 rounded-control border border-rule px-2.5 py-1.5 text-[11px] font-medium">
+                <button
+                  type="button"
+                  onClick={() => showPreview(t.code)}
+                  aria-pressed={(previewing || current?.code) === t.code}
+                  className="shrink-0 rounded-control border border-rule px-2.5 py-1.5 text-[12px] font-medium"
+                >
                   ดูตัวอย่าง
                 </button>
-                <Switch on={t.on} label={t.code} />
               </div>
             ))}
+            {templates.data?.length === 0 && (
+              <p className="px-5 py-5 text-[12.5px] text-ink-3">ไม่มีแม่แบบข้อความ</p>
+            )}
           </Section>
 
           <Section title="สวิตช์ฟีเจอร์">
-            {FLAGS.map((f, i) => (
-              <div key={f.name} className={`flex items-center justify-between gap-4 px-5 py-3.5 ${i < FLAGS.length - 1 ? 'border-b border-rule-soft' : ''}`}>
+            {settings.isPending && <Skeleton w="100%" h="144px" />}
+            {flags.map((f, i) => (
+              <div
+                key={f.key}
+                className={`flex items-center justify-between gap-4 px-5 py-3.5 ${
+                  i < flags.length - 1 ? 'border-b border-rule-soft' : ''
+                }`}
+              >
                 <span className="min-w-0">
-                  <span className="block text-[13px] text-ink-2">{f.name}</span>
-                  <span className="t-meta block text-ink-3">{f.why}</span>
+                  <span className="block text-[13px] text-ink-2">{FLAG_META[f.key].name}</span>
+                  <span className="t-meta block text-ink-3">{FLAG_META[f.key].why}</span>
                 </span>
-                <Switch on={f.on} label={f.name} />
+                <Switch
+                  on={f.value === 'true'}
+                  label={FLAG_META[f.key].name}
+                  onChange={() => setConfirming(f)}
+                />
               </div>
             ))}
+            {flags.length === 0 && !settings.isPending && (
+              <p className="px-5 py-5 text-[12.5px] text-ink-3">ไม่มีสวิตช์ที่ตั้งค่าได้</p>
+            )}
           </Section>
         </div>
 
-        <aside className="min-w-0 space-y-4">
+        <aside ref={previewRef} className="min-w-0 space-y-4 xl:sticky xl:top-8 xl:self-start">
           <header className="flex items-center justify-between">
             <h2 className="t-section">ตัวอย่างข้อความ</h2>
-            <span className="t-caption text-ink-3">reminder_before v4</span>
+            <span className="t-caption text-ink-3">{current?.code ?? 'ยังไม่มีแม่แบบ'}</span>
           </header>
 
           {/* A mock LINE chat. The bubble uses a chat radius rather than the app's
@@ -96,32 +165,44 @@ export default function AdminSettings() {
             <div className="flex items-start gap-2">
               <span className="size-7 shrink-0 rounded-full bg-ink" aria-hidden />
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] text-white/90">WorkCatch</p>
+                <p className="text-[12px] text-white/90">WorkCatch</p>
                 <div className="mt-1 rounded-[12px] bg-white px-3.5 py-3">
-                  <p className="text-[12.5px] font-medium text-time-today">ใกล้ถึงกำหนดส่งในอีก 2 ชั่วโมง</p>
-                  <p className="mt-2 text-[13.5px] font-semibold leading-snug">สรุปรายงานยอดขาย Q3 ส่งหัวหน้าฝ่าย</p>
-                  <p className="mt-2 font-mono text-[10.5px] leading-[1.8] text-ink-2">
-                    กำหนดส่ง   วันนี้ 17:00<br />ความสำคัญ  Urgent<br />โปรเจกต์    รายงานประจำเดือน
+                  <p className="mt-2 font-mono text-[12px] leading-[1.8] text-ink-2">
+                    {current?.preview.split('\n').map((line, index) => (
+                      <span key={index} className="block">
+                        {index === 0 ? <strong className="font-medium text-time-today">{line}</strong> : line}
+                      </span>
+                    ))}
                   </p>
-                  <div className="my-2.5 h-px bg-rule-soft" />
-                  <p className="font-mono text-[10.5px] text-project-blue">เปิดงาน  wc.app/t/9e04a1</p>
+                  {!current && <p className="text-[12.5px] text-ink-3">ไม่มีตัวอย่างข้อความ</p>}
                 </div>
-                <p className="mt-1 font-mono text-[9px] text-white/70">16:59</p>
+                <p className="mt-1 font-mono text-[12px] text-white/70">16:59</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-sheet border border-rule px-5 py-4">
-            <p className="t-label text-ink-3">ตัวแปรที่ใช้ได้</p>
-            <p className="mt-1.5 font-mono text-[10px] leading-[1.8] text-ink-2">
-              {'{{task_title}} · {{due_at}} · {{priority}} · {{project}} · {{requester}} · {{link}} · {{days_overdue}}'}
-            </p>
-            <p className="t-meta mt-2.5 leading-relaxed text-ink-3">
-              ตัวอย่างนี้เรนเดอร์จากงานจริงในระบบ เพื่อให้เห็นว่าข้อความยาวเกินไปหรือตัดคำผิดตรงไหน ก่อนกดเปิดใช้
-            </p>
-          </div>
+          <p className="t-meta leading-relaxed text-ink-3">
+            ตัวอย่างนี้เรนเดอร์จากข้อมูลตัวอย่าง เพื่อให้เห็นการตัดคำโดยไม่เปิดเผยงานจริงของผู้ใช้
+          </p>
         </aside>
       </div>
+      <ConfirmDialog
+        open={!!confirming}
+        title="ยืนยันการเปลี่ยนสวิตช์"
+        subject={confirming ? FLAG_META[confirming.key].name : undefined}
+        body="การเปลี่ยนค่านี้มีผลกับระบบทันที"
+        consequences={confirming ? [flagConsequence(confirming)] : []}
+        confirmLabel="ยืนยัน"
+        onClose={() => setConfirming(null)}
+        onConfirm={() => {
+          if (!confirming) return
+          const next = confirming.value !== 'true'
+          updateSetting.mutate({ key: confirming.key, value: next }, {
+            onSuccess: () => toast({ title: 'บันทึกการตั้งค่าแล้ว', tone: 'success' }),
+            onError: () => toast({ title: 'บันทึกการตั้งค่าไม่สำเร็จ', tone: 'error' }),
+          })
+        }}
+      />
     </>
   )
 }
@@ -138,16 +219,72 @@ function Section({ title, note, children }: { title: string; note?: string; chil
   )
 }
 
-function Switch({ on, label }: { on: boolean; label: string }) {
+function Switch({ on, label, onChange }: { on: boolean; label: string; onChange: () => void }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
       aria-label={label}
-      className={`relative h-5 w-[34px] shrink-0 rounded-pill ${on ? 'bg-ink' : 'bg-rule'}`}
+      onClick={onChange}
+      className="relative -my-3 -mx-[5px] size-11 shrink-0 focus-visible:[&>span]:outline-2 focus-visible:[&>span]:outline-offset-2 focus-visible:[&>span]:outline-ink"
     >
-      <span className={`absolute top-0.5 size-4 rounded-full bg-white ${on ? 'left-4' : 'left-0.5'}`} />
+      <span aria-hidden className={`absolute left-[5px] top-[12px] h-5 w-[34px] rounded-pill transition-colors ${on ? 'bg-brand' : 'bg-rule'}`}>
+        <span className={`absolute top-0.5 size-4 rounded-full bg-white transition-all ${on ? 'left-4' : 'left-0.5'}`} />
+      </span>
     </button>
+  )
+}
+
+function configRows(config: AdminConfig): [string, string][] {
+  return [
+    ['เขตเวลา', config.defaultTimezone],
+    ['เตือนก่อนครบกำหนด', config.beforeDueMinutes.map(thaiDuration).join(' และ ')],
+    [
+      'นโยบายลองส่งใหม่',
+      `${config.delivery.retryDelaysSeconds.map((seconds) => (
+        seconds % 60 === 0 ? thaiDuration(seconds / 60) : `${seconds} วินาที`
+      )).join(', ')} · ` +
+        `สูงสุด ${config.delivery.maxAttempts} ครั้ง`,
+    ],
+    ['เก็บงานที่ลบไว้', `${config.deletedItemRetentionDays} วัน`],
+    ['เก็บข้อความ LINE ขาเข้าไว้', `${config.inboundMessageRetentionDays} วัน`],
+    ['รหัสปลดล็อก', `สูงสุด ${config.unlockCode.maxAttempts} ครั้ง · ล็อก ${config.unlockCode.lockMinutes} นาที`],
+    ['ยืนยันตัวตนซ้ำ', `${config.stepUpMinutes} นาที`],
+  ]
+}
+
+function thaiDuration(minutes: number) {
+  if (minutes % 1_440 === 0) return `${minutes / 1_440} วัน`
+  if (minutes % 60 === 0) return `${minutes / 60} ชั่วโมง`
+  return `${minutes} นาที`
+}
+
+function flagConsequence(setting: AdminSetting) {
+  if (setting.key === 'sending_paused') {
+    return setting.value === 'true'
+      ? 'การเตือนทาง LINE และการตอบกลับของบอทจะกลับมาทำงาน'
+      : 'การเตือนทาง LINE และการตอบกลับของบอทจะหยุดจนกว่าจะปิด'
+  }
+  if (setting.key === 'secrets_enabled') {
+    return setting.value === 'true'
+      ? 'ผู้ใช้จะเปิดดูและบันทึกข้อมูลเข้าสู่ระบบไม่ได้ ข้อมูลเดิมยังอยู่'
+      : 'ผู้ใช้จะเปิดดูและบันทึกข้อมูลเข้าสู่ระบบได้อีกครั้ง'
+  }
+  return FLAG_META.billing_enabled.why
+}
+
+function AdminSettingsSkeleton() {
+  return (
+    <SkeletonScreen label="กำลังโหลดการตั้งค่าระบบ">
+      <SkeletonPageHeader />
+      <div className="mt-7 grid gap-8 xl:grid-cols-[1fr_344px]">
+        <div className="space-y-8">
+          <Skeleton w="100%" h="244px" className="rounded-sheet" />
+          <Skeleton w="100%" h="244px" className="rounded-sheet" />
+        </div>
+        <Skeleton w="100%" h="320px" className="rounded-sheet" />
+      </div>
+    </SkeletonScreen>
   )
 }

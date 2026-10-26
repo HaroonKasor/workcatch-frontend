@@ -17,6 +17,18 @@ import type { Task } from '../lib/types'
 
 const NOW_X = 27 // percent — the past gets a quarter of the rule, the day gets the rest
 
+/**
+ * Overdue ticks read as "3 วันก่อน", not "เกิน 3 วัน" as the row gutter does.
+ * On a rule the eye is reading POSITION in time, so the label names when the
+ * thing was; in a ledger row it is reading a debt, so the label names how far
+ * past due it is. Same fact, two questions.
+ */
+function pastLabel(dueIso: string, now: Date): string {
+  const days = Math.floor((now.getTime() - new Date(dueIso).getTime()) / 86_400_000)
+  if (days <= 0) return 'วันนี้'
+  return days === 1 ? 'เมื่อวาน' : `${days} วันก่อน`
+}
+
 export function TimeRule({ tasks, now }: { tasks: Task[]; now: Date }) {
   const overdue = tasks.filter((t) => timeStateOf(t, now) === 'late')
   const dueToday = tasks
@@ -48,53 +60,60 @@ export function TimeRule({ tasks, now }: { tasks: Task[]; now: Date }) {
 
   return (
     <section className="rounded-sheet border border-rule bg-sheet" aria-label="เส้นเวลาวันนี้">
-      <div className="px-7 pt-5">
-        <p className="t-label text-ink-3">เส้นเวลาวันนี้</p>
-      </div>
+      {/* Fixed coordinate space, transcribed from Figma node 10:5 (1128x214).
+          The offsets are literal px on purpose: this project's spacing scale
+          jumps 28 -> 40 at step 7, and reading the frame's 28px gutter as
+          "spacing-7" shifted the whole rule 13px and shortened the track by 26.
+          A measured drawing does not survive being re-derived from tokens. */}
+      <div className="relative h-[178px]">
+        <p className="t-label absolute left-[28px] top-[22px] text-ink-3">เส้นเวลาวันนี้</p>
 
-      <div className="relative mx-7 mt-4 h-[120px]">
         {counts.late > 0 && (
-          <p className="t-meta text-time-late absolute left-0 top-0">
+          <p className="t-note text-time-late absolute left-[32px] top-[60px]">
             เกินกำหนด {counts.late} งาน
           </p>
         )}
 
-        {/* The axis. Crimson behind you, neutral ahead of you. */}
-        <div className="absolute left-0 right-0 top-[76px] h-px bg-rule" />
-        <div
-          className="absolute top-[76px] h-px bg-time-late/45"
-          style={{ left: 0, width: `${NOW_X}%` }}
-        />
+        {/* The track: everything below is placed as a percentage of it, so the
+            rule stretches with the column without any offset arithmetic. */}
+        <div className="absolute inset-y-0 left-[28px] right-[28px]">
+          {/* The axis. Crimson behind you, neutral ahead of you. */}
+          <div className="absolute inset-x-0 top-[132px] h-px bg-rule" />
+          <div
+            className="bg-time-late/45 absolute top-[132px] left-0 h-px"
+            style={{ width: `${NOW_X}%` }}
+          />
 
-        {past.map(({ task, x }) => (
-          <Tick key={task.id} x={x} task={task} now={now} />
-        ))}
-        {upcoming.map(({ task, x }) => (
-          <Tick key={task.id} x={x} task={task} now={now} label={clock(task.dueAt!)} />
-        ))}
+          {past.map(({ task, x }) => (
+            <Tick key={task.id} x={x} task={task} now={now} label={task.dueAt ? pastLabel(task.dueAt, now) : undefined} />
+          ))}
+          {upcoming.map(({ task, x }) => (
+            <Tick key={task.id} x={x} task={task} now={now} label={clock(task.dueAt!)} />
+          ))}
 
-        {/* Now. The only full-height mark on the rule. */}
-        <div
-          className="absolute w-0.5 bg-ink"
-          style={{ left: `${NOW_X}%`, top: 32, height: 74 }}
-          aria-hidden
-        />
-        <span
-          className="t-label absolute -translate-x-1/2 text-ink"
-          style={{ left: `${NOW_X}%`, top: 16 }}
-        >
-          ตอนนี้
-        </span>
-        <span
-          className="t-time-em absolute -translate-x-1/2 text-ink"
-          style={{ left: `${NOW_X}%`, top: 100 }}
-        >
-          {clock(now.toISOString())}
-        </span>
+          {/* Now. The only full-height mark on the rule. */}
+          <div
+            className="absolute w-0.5 bg-ink"
+            style={{ left: `${NOW_X}%`, top: 80, height: 74 }}
+            aria-hidden
+          />
+          <span
+            className="t-now absolute -translate-x-1/2 text-ink"
+            style={{ left: `${NOW_X}%`, top: 62 }}
+          >
+            ตอนนี้
+          </span>
+          <span
+            className="t-now-clock absolute -translate-x-1/2 text-ink"
+            style={{ left: `${NOW_X}%`, top: 158 }}
+          >
+            {clock(now.toISOString())}
+          </span>
+        </div>
       </div>
 
-      <div className="mx-7 mt-2 border-t border-rule-soft" />
-      <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 px-7 py-3.5">
+      <div className="mx-[28px] h-px bg-rule-soft" />
+      <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 px-[28px] pt-[11px] pb-2">
         <Count label="เกินกำหนด" value={counts.late} tone="bg-time-late text-time-late" />
         <Count label="ครบกำหนดวันนี้" value={counts.today} tone="bg-time-today text-time-today" />
         <Count label="รอคนอื่น" value={counts.waiting} tone="bg-time-waiting text-time-waiting" />
@@ -114,18 +133,21 @@ function Tick({ x, task, now, label }: { x: number; task: Task; now: Date; label
     <>
       <div
         className={`absolute ${bg}`}
-        style={{ left: `${x}%`, top: 46, width: w, height: 31, transform: 'translateX(-50%)' }}
+        style={{ left: `${x}%`, top: 102, width: w, height: 31, transform: 'translateX(-50%)' }}
         title={task.title}
       />
       <div
         className={`absolute size-[5px] ${bg}`}
-        style={{ left: `${x}%`, top: 41, transform: 'translateX(-50%)' }}
+        style={{ left: `${x}%`, top: 97, transform: 'translateX(-50%)' }}
         aria-hidden
       />
+      {/* Hidden on a phone: four clock labels inside 350px overlap into an
+          unreadable smear. The ticks and the "now" mark still answer the question
+          the rule exists to answer - what is behind me and what is ahead. */}
       {label && (
         <span
-          className={`t-caption absolute -translate-x-1/2 ${task.priority === 'URGENT' ? timeText[state] : 'text-ink-2'}`}
-          style={{ left: `${x}%`, top: 84 }}
+          className={`t-tick absolute hidden -translate-x-1/2 sm:block ${task.priority === 'URGENT' ? `font-semibold ${timeText[state]}` : 'text-ink-2'}`}
+          style={{ left: `${x}%`, top: 140 }}
         >
           {label}
         </span>
@@ -139,8 +161,8 @@ function Count({ label, value, tone }: { label: string; value: number; tone: str
   return (
     <div className="flex items-center gap-1.5">
       <span className={`size-1 ${dot}`} aria-hidden />
-      <dt className="t-meta text-ink-2">{label}</dt>
-      <dd className={`font-mono text-[11px] font-semibold ${text}`}>{value}</dd>
+      <dt className="t-note text-ink-2">{label}</dt>
+      <dd className={`font-mono text-[12px] leading-[1.45] font-semibold ${text}`}>{value}</dd>
     </div>
   )
 }

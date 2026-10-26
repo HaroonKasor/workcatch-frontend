@@ -1,9 +1,11 @@
 import { useNotifications } from '../lib/api'
-import { clock, longDate } from '../lib/time'
+import { notificationLabel as LABEL, notificationTone as TONE } from '../lib/style'
+import { clock } from '../lib/time'
 import type { NotificationRecord, NotificationStatus } from '../lib/types'
+import { Skeleton as Block, SkeletonPageHeader, SkeletonRows, SkeletonScreen } from '../components/Skeleton'
 
 /**
- * /app/notifications — Figma node 47:810
+ * /app/notifications — Figma v2 423:2103; v1 47:810
  *
  * The wording here matters more than the layout. LINE returns 200 even when the
  * recipient has blocked the bot, so this screen says "ส่งแล้ว" meaning LINE
@@ -11,27 +13,27 @@ import type { NotificationRecord, NotificationStatus } from '../lib/types'
  * delivery we cannot observe would be the most damaging lie this product could
  * tell, because the whole promise is that nothing slips.
  */
-const LABEL: Record<NotificationStatus, string> = {
-  PENDING: 'รอส่ง',
-  PROCESSING: 'กำลังส่ง',
-  SENT: 'ส่งแล้ว',
-  FAILED_RETRYABLE: 'กำลังลองใหม่',
-  FAILED_FINAL: 'ล้มเหลว',
-  CANCELLED: 'ยกเลิก',
-}
-
-const TONE: Record<NotificationStatus, string> = {
-  PENDING: 'text-ink-3',
-  PROCESSING: 'text-ink-3',
-  SENT: 'text-ink-2',
-  FAILED_RETRYABLE: 'text-time-soon',
-  FAILED_FINAL: 'text-error',
-  CANCELLED: 'text-ink-3',
+/** Header, the tally row, then the attempt log. */
+function NotificationsSkeleton() {
+  return (
+    <SkeletonScreen label="กำลังโหลดประวัติแจ้งเตือน">
+      <SkeletonPageHeader />
+      <div className="mt-6 flex flex-wrap gap-x-7 gap-y-3">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i}>
+            <Block w="72px" h="10px" />
+            <Block w="34px" h="18px" className="mt-1.5" />
+          </div>
+        ))}
+      </div>
+      <SkeletonRows rows={6} className="mt-6" />
+    </SkeletonScreen>
+  )
 }
 
 export default function Notifications() {
   const { data, isPending } = useNotifications()
-  if (isPending) return <p className="t-body text-ink-3">กำลังโหลด…</p>
+  if (isPending) return <NotificationsSkeleton />
 
   const items = [...(data ?? [])].sort((a, b) => b.at.localeCompare(a.at))
   const count = (s: NotificationStatus[]) => items.filter((i) => s.includes(i.status)).length
@@ -40,11 +42,7 @@ export default function Notifications() {
     <>
       <p className="t-caption text-ink-3">30 วันล่าสุด</p>
       <h1 className="t-page-title mt-1">ประวัติแจ้งเตือน</h1>
-      <p className="t-body text-ink-2 mt-2">
-        “ส่งแล้ว” หมายถึง LINE รับคำขอไปแล้ว ไม่ได้ยืนยันว่าคุณอ่าน
-      </p>
-
-      <dl className="mt-6 flex flex-wrap gap-x-7 gap-y-3">
+      <dl className="mt-[33px] flex flex-wrap gap-x-7 gap-y-3">
         <Tally label="ส่งแล้ว" value={count(['SENT'])} tone="text-ink" />
         <Tally label="รอส่ง" value={count(['PENDING', 'PROCESSING'])} tone="text-ink-3" />
         <Tally label="กำลังลองใหม่" value={count(['FAILED_RETRYABLE'])} tone="text-time-soon" />
@@ -62,6 +60,15 @@ export default function Notifications() {
         </div>
       ) : (
         <div className="mt-6 overflow-hidden rounded-sheet border border-rule bg-sheet">
+          {/* The column heads of v2 423:2103. Desktop only: on a phone each row
+              wraps into its own card and the heads would label nothing. */}
+          <div className="hidden items-center gap-x-4 border-b border-rule px-5 py-2.5 text-[12px] text-ink-3 sm:flex">
+            <span className="w-32 shrink-0">เวลา</span>
+            <span className="min-w-0 flex-1">งาน</span>
+            <span className="w-16 shrink-0">ช่องทาง</span>
+            <span className="w-28 shrink-0">สถานะ</span>
+            <span className="w-72 shrink-0">เหตุผล</span>
+          </div>
           {items.map((n, i) => <Row key={n.id} n={n} last={i === items.length - 1} />)}
         </div>
       )}
@@ -77,12 +84,11 @@ export default function Notifications() {
 function Row({ n, last }: { n: NotificationRecord; last: boolean }) {
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 ${last ? '' : 'border-b border-rule-soft'}`}>
-      <span className="t-caption w-32 shrink-0 text-ink-3">
-        {longDate(new Date(n.at)).split(' ').slice(1, 3).join(' ')} {clock(n.at)}
-      </span>
+      <span className="t-caption w-32 shrink-0 text-ink-3">{when(n.at)}</span>
       <span className="min-w-0 flex-1 truncate text-[12.5px]">{n.taskTitle}</span>
       <span className="t-caption w-16 shrink-0 text-ink-3">{n.channel === 'IN_APP' ? 'ในแอป' : n.channel}</span>
       <span className={`w-28 shrink-0 text-[12px] ${TONE[n.status]} ${n.status === 'SENT' ? '' : 'font-medium'}`}>
+        {n.status === 'FAILED_FINAL' && <span aria-hidden>✕ </span>}
         {LABEL[n.status]}
         {n.status === 'FAILED_RETRYABLE' && ` ${n.attempt}/${n.maxAttempts}`}
       </span>
@@ -100,4 +106,15 @@ function Tally({ label, value, tone }: { label: string; value: number; tone: str
       <dt className="t-meta text-ink-2">{label}</dt>
     </div>
   )
+}
+
+/** "วันนี้ 08:40", "เมื่อวาน 17:00", "6 ก.ย. 17:30" — v2 423:2103's own phrasing. */
+function when(iso: string): string {
+  const key = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(d)
+  const d = new Date(iso)
+  const now = new Date()
+  if (key(d) === key(now)) return `วันนี้ ${clock(iso)}`
+  if (key(d) === key(new Date(now.getTime() - 86_400_000))) return `เมื่อวาน ${clock(iso)}`
+  const date = new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' }).format(d)
+  return `${date} ${clock(iso)}`
 }

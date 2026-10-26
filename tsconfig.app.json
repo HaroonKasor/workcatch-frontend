@@ -6,6 +6,7 @@
     "module": "esnext",
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
 
     /* Bundler mode */
@@ -22,5 +23,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // node --test files: they import node:test, which the browser build has no types for.
+  "exclude": ["src/**/*.test.ts"]
 }
