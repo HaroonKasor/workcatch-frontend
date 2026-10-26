@@ -71,7 +71,6 @@ export function AiSuggestionBlock({ tasks }: { tasks: Task[] }) {
         >
           ขอคำแนะนำวันนี้
         </button>
-        <span className="text-[12px] text-ink-3">สร้างโดย AI · ส่งชื่องานและกำหนดส่งไปประมวลผลที่ Google เมื่อกด</span>
       </section>
     )
   }
@@ -81,9 +80,7 @@ export function AiSuggestionBlock({ tasks }: { tasks: Task[] }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3">
           <span className="text-[14px] font-semibold">วันนี้ควรทำอะไรก่อน</span>
-          <span className="text-[12px] text-ink-3">
-            {collapsed && actions.length > 0 ? `${actions.length} ข้อแนะนำ · สร้างโดย AI` : 'สร้างโดย AI · ตรวจก่อนทำ'}
-          </span>
+          {collapsed && actions.length > 0 && <span className="text-[12px] text-ink-3">{actions.length} ข้อแนะนำ</span>}
         </p>
         <span className="flex gap-5 text-[12.5px] font-medium text-ink-2">
           {!collapsed && (

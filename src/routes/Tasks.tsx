@@ -8,6 +8,10 @@ import { priorityLabel, statusLabel } from '../lib/style'
 import { byUrgency, timeStateOf } from '../lib/time'
 import type { Priority, Task, TimeState } from '../lib/types'
 import { useNow } from '../lib/useNow'
+import { useIsDesktop } from '../lib/useMedia'
+import { MobileHeader } from '../components/mobile/MobileHeader'
+import { TasksMobile } from '../components/mobile/TasksMobile'
+import { MobileListSkeleton, MobileLoadError } from '../components/mobile/States'
 
 /**
  * /app/tasks — Figma v2 423:747 (desktop), 423:3188 (phone); v1 35:118
@@ -35,18 +39,19 @@ interface Filters {
   source: string
 }
 
-type Bucket = { key: string; label: string; note: string; alert?: boolean; tasks: Task[] }
+type Bucket = { key: string; label: string; alert?: boolean; tasks: Task[] }
 
 /** CANCELLED is deliberately absent: this list never shows cancelled work. */
 const STATUSES: Task['status'][] = ['INBOX', 'TODO', 'IN_PROGRESS', 'WAITING', 'REVIEW', 'DONE']
 const PRIORITIES: Priority[] = ['URGENT', 'HIGH', 'MEDIUM', 'LOW']
 
 export default function Tasks() {
-  const { data, isPending, isError } = useTasks()
+  const { data, isPending, isError, refetch } = useTasks()
   const projects = useProjects()
   const [params, setParams] = useSearchParams()
   const [q, setQ] = useState('')
   const now = useNow()
+  const desktop = useIsDesktop()
 
   // `filter=overdue|waiting` is the older spelling the rail used. Reading it
   // here keeps every existing deep link and bookmark working while the row
@@ -85,25 +90,42 @@ export default function Tasks() {
       .sort((a, b) => byUrgency(a, b, now))
 
     return [
-      { key: 'late', label: 'เกินกำหนด', note: 'จัดการก่อนอย่างอื่น', alert: true, tasks: of('late') },
-      { key: 'today', label: 'วันนี้', note: '', tasks: of('today') },
-      { key: 'soon', label: 'สัปดาห์นี้', note: '', tasks: of('soon') },
+      { key: 'late', label: 'เกินกำหนด', alert: true, tasks: of('late') },
+      { key: 'today', label: 'วันนี้', tasks: of('today') },
+      { key: 'soon', label: 'สัปดาห์นี้', tasks: of('soon') },
       // Figma v2 423:747 gives waiting work its own group: it is not late and
       // not soon, it is somebody else's move.
-      { key: 'waiting', label: 'รอคนอื่น', note: '', tasks: of('waiting') },
-      { key: 'none', label: 'ยังไม่มีกำหนด', note: 'ควรใส่กำหนดส่ง', tasks: of('none') },
-      { key: 'done', label: 'เสร็จแล้ว', note: '', tasks: of('done') },
+      { key: 'waiting', label: 'รอคนอื่น', tasks: of('waiting') },
+      { key: 'none', label: 'ยังไม่มีกำหนด', tasks: of('none') },
+      { key: 'done', label: 'เสร็จแล้ว', tasks: of('done') },
     ].filter((b) => b.tasks.length > 0)
   }, [data, f.status, f.project, f.priority, f.source, q, now])
 
-  if (isPending) return <TasksSkeleton />
-  if (isError) return <p className="t-body text-error">โหลดรายการงานไม่ได้</p>
+  if (isPending) return desktop ? <TasksSkeleton /> : <MobileListSkeleton title="งาน" label="กำลังโหลดรายการงาน" />
+  if (isError) return desktop ? <p className="t-body text-error">โหลดรายการงานไม่ได้</p> : <><MobileHeader title="งาน" /><MobileLoadError title="โหลดงานไม่สำเร็จ" onRetry={() => void refetch()} /></>
 
   const total = data.filter((t) => t.status !== 'DONE' && t.status !== 'CANCELLED').length
   const nothing = buckets.length === 0
   // The source list is whatever actually came in, never a hardcoded enum: an
   // option that can only ever return nothing is worse than no option.
   const sources = [...new Set(data.map((t) => t.source).filter((x): x is string => !!x))].sort()
+
+  if (!desktop) {
+    return (
+      <TasksMobile
+        buckets={buckets}
+        total={total}
+        matching={buckets.reduce((n, b) => n + b.tasks.length, 0)}
+        f={f}
+        set={set}
+        projects={(projects.data ?? []).filter((p) => !p.archivedAt)}
+        sources={sources}
+        filtering={filtering}
+        clear={() => { setParams({}); setQ('') }}
+        now={now}
+      />
+    )
+  }
 
   return (
     <>
@@ -175,9 +197,7 @@ export default function Tasks() {
           <section key={b.key} className="mt-7">
             <header className="flex items-center justify-between">
               <h2 className={`t-label ${b.alert ? 'text-time-late' : 'text-ink-3'}`}>{b.label}</h2>
-              <p className="t-meta text-ink-3">
-                {b.tasks.length} งาน{b.note && ` — ${b.note}`}
-              </p>
+              <p className="t-meta text-ink-3">{b.tasks.length} งาน</p>
             </header>
             <div className="@container mt-2.5 overflow-hidden rounded-sheet border border-rule bg-sheet">
               {b.tasks.map((t, i) => (
@@ -234,11 +254,6 @@ function NoMatch({ filtered, onClear }: { filtered: boolean; onClear: () => void
   return (
     <div className="mt-7 rounded-sheet border border-rule bg-sheet px-7 py-11">
       <p className="t-section">{filtered ? 'ไม่มีงานที่ตรงกับตัวกรอง' : 'ยังไม่มีงานในระบบ'}</p>
-      <p className="t-body text-ink-2 mt-2 leading-relaxed">
-        {filtered
-          ? 'ลองเอาตัวกรองบางอันออก หรือค้นด้วยคำที่กว้างขึ้น'
-          : 'บังคับแค่ชื่องานอย่างเดียว กำหนดส่งกับโปรเจกต์ค่อยมาเติมทีหลังได้'}
-      </p>
       {filtered && (
         <button
           type="button"

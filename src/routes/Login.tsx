@@ -2,12 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { LineMark } from '../components/LineMark'
 import { useMe } from '../lib/api'
-import { LINE_OA_ADD_FRIEND_URL, LINE_OA_ID } from '../lib/line'
 import { entryDestination } from '../lib/session'
 import { BrandMark } from '../components/BrandMark'
 
 /**
- * /login — Figma node 32:3 (1440), 248:1569 (390), states 248:1598
+ * /login — Figma 32:3 (1440), 473:2272 (390), 491:2908 / 491:2954 (iPad), error states 473:2324 / 473:2382 / 473:2439
  *
  * The left panel shows three real task rows rather than a feature list. What
  * this product does is make lateness visible; showing that is more honest than
@@ -40,6 +39,7 @@ function outcomeOf(reason: string | null): Outcome {
   return 'failed'
 }
 
+
 export default function Login() {
   const me = useMe()
   const [params] = useSearchParams()
@@ -55,9 +55,52 @@ export default function Login() {
   }
 
   return (
-    <div className="wc-scale min-h-viewport bg-sheet lg:grid lg:grid-cols-[56%_1fr]">
-      <Pitch />
-      <SignIn outcome={outcome} />
+    <div className="wc-scale">
+      {/* Phone and iPad (below 1280): the preview on grey, the sign-in on a white
+          sheet — under it on a phone and an iPad held upright, beside it when the
+          iPad is turned. */}
+      <div className="flex min-h-viewport flex-col bg-ground min-[900px]:grid min-[900px]:grid-cols-2 xl:hidden">
+        <section className="flex flex-1 flex-col items-center px-5 pt-3 pb-8 md:justify-center md:px-12">
+          <BackHome className="self-start md:hidden" />
+          <div className="mt-4 w-full max-w-[350px] md:mt-0 md:max-w-[340px]">
+            <Brand />
+            <Preview />
+          </div>
+        </section>
+        <main className="rounded-t-[20px] bg-sheet px-5 pt-7 pb-8 md:px-12 md:pt-8 min-[900px]:flex min-[900px]:flex-col min-[900px]:justify-center min-[900px]:rounded-none">
+          <BackHome className="mb-3 hidden md:inline-flex" />
+          <SignInPanel outcome={outcome} />
+        </main>
+      </div>
+
+      <div className="hidden min-h-viewport bg-sheet xl:grid xl:grid-cols-[56%_1fr]">
+        <Pitch />
+        <main className="flex items-center justify-center px-6 py-16">
+          <div className="w-full max-w-[396px]">
+            <SignInPanel outcome={outcome} />
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
+
+function BackHome({ className = '' }: { className?: string }) {
+  return (
+    <Link to="/" className={`flex min-h-11 items-center gap-1 text-[13px] text-ink-2 hover:text-ink ${className}`}>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M10 3.5 5.5 8l4.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      หน้าแรก
+    </Link>
+  )
+}
+
+function Brand() {
+  return (
+    <div className="mb-5 flex items-center justify-center gap-2.5">
+      <BrandMark size={30} className="text-ink" />
+      <p className="t-wordmark">WorkCatch</p>
     </div>
   )
 }
@@ -70,112 +113,84 @@ const PROOF = [
   'เก็บวิธีทำงานไว้กับงาน คราวหน้าไม่ต้องถามใครซ้ำ',
 ]
 
+/** Desktop only: the dark panel beside the sign-in. */
 function Pitch() {
   return (
-    <>
-      {/* Phone: the dark block shrinks to a 300px header — Figma 248:1570. */}
-      <header className="flex min-h-[300px] flex-col bg-ink px-5 pt-11 pb-7 text-on-dark lg:hidden">
-        <Wordmark />
-        <div className="mt-auto">
-          <Headline className="text-[28px]" />
-          <p className="mt-4 text-[13px] leading-[1.5] opacity-60">
-            จดที่เดียว แล้วให้ LINE เตือนก่อนถึงกำหนด
-          </p>
-        </div>
-      </header>
-
-      <aside className="hidden bg-ink px-[72px] pt-16 pb-14 text-on-dark lg:flex lg:flex-col">
-        <Wordmark />
-
-        <div className="mt-auto max-w-[600px]">
-          <p className="t-eyebrow opacity-50">รับงานจากไลน์ อีเมล ห้องประชุม และคำสั่งปากเปล่า</p>
-          <Headline className="mt-3 text-[44px]" />
-          <p className="mt-5 text-[15px] leading-[1.5] opacity-65">
-            จดที่เดียว แล้วให้ LINE เตือนก่อนถึงกำหนด — ไม่ใช่หลังจากมีคนทวงแล้ว
-          </p>
-
-          <ul className="mt-8 space-y-2.5">
-            {PROOF.map((p) => (
-              <li key={p} className="flex items-start gap-[10px]">
-                {/* brand/on-dark, not brand/emerald: this tick sits on ink. */}
-                <span className="mt-[3px] shrink-0 font-mono text-[12px] text-brand-on-dark" aria-hidden>✓</span>
-                <span className="text-[13px] leading-[1.45] opacity-90">{p}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <Preview />
-      </aside>
-    </>
-  )
-}
-
-function Wordmark() {
-  return (
-    <div>
+    <aside className="flex flex-col bg-ink px-[72px] pt-16 pb-14 text-on-dark">
       <div className="flex items-center gap-2">
         <BrandMark />
         <p className="t-wordmark">WorkCatch</p>
       </div>
-      <p className="t-meta mt-px pl-8 opacity-50">ไม่ให้งานหล่น</p>
-    </div>
-  )
-}
 
-function Headline({ className = '' }: { className?: string }) {
-  return (
-    <h1 className={`font-display font-semibold leading-[1.3] tracking-[-1px] ${className}`}>
-      <span className="block">งานที่รับปากไว้</span>
-      <span className="block">จะไม่หล่นอีก</span>
-    </h1>
+      <div className="mt-auto max-w-[600px]">
+        <h1 className="font-display mt-3 text-[44px] leading-[1.3] font-semibold tracking-[-1px]">
+          <span className="block">งานที่รับปากไว้</span>
+          <span className="block">จะไม่หล่นอีก</span>
+        </h1>
+
+        <ul className="mt-8 space-y-2.5">
+          {PROOF.map((p) => (
+            <li key={p} className="flex items-start gap-[10px]">
+              {/* brand/on-dark, not brand/emerald: this tick sits on ink. */}
+              <span className="mt-[3px] shrink-0 font-mono text-[12px] text-brand-on-dark" aria-hidden>✓</span>
+              <span className="text-[13px] leading-[1.45] opacity-90">{p}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-14 max-w-[560px] overflow-hidden rounded-sheet bg-sheet text-ink">
+        <PreviewRows />
+      </div>
+    </aside>
   )
 }
 
 /**
- * The product, not a picture of the product — Figma 246:1586.
- *
- * A white card on the dark panel, drawn with the same tokens the real list uses,
- * so what a visitor is shown and what they get after signing in are the same
- * object. The time colours are the point of the whole screen and are the only
- * colour on it besides the LINE mark.
+ * The product, not a picture of the product — three real task rows drawn with the
+ * same tokens the list uses, so what a visitor is shown and what they get after
+ * signing in are the same object. The time colours are the only colour on it.
  */
-function Preview() {
+const PREVIEW = [
+  { when: '3 วัน', tone: 'text-time-late', em: true, title: 'ส่งใบเสนอราคา บ.ทรัพย์เจริญ', sub: 'งานฝากทั่วไป' },
+  { when: '11:00', tone: 'text-time-today', title: 'ประชุมสรุป Q3 กับฝ่ายขาย', sub: 'รายงานประจำเดือน' },
+  { when: '15:00', tone: 'text-time-soon', title: 'รีวิวเอกสารสัญญาผู้รับเหมา', sub: 'งานฝากทั่วไป' },
+]
+
+function PreviewRows() {
   return (
-    <div className="mt-14 max-w-[560px] overflow-hidden rounded-sheet bg-sheet text-ink">
-      <div className="flex items-center justify-between gap-4 border-b border-rule-soft px-[18px] py-3.5">
-        <p className="text-[15px] font-medium">งานวันนี้</p>
-        <p className="t-caption text-ink-3">เรียงตามเวลาที่เหลือ</p>
-      </div>
-      <PreviewRow when="เกิน 3 วัน" tone="text-time-late" em title="ส่งใบเสนอราคา บ.ทรัพย์เจริญ" sub="งานฝากทั่วไป · สั่งโดย คุณนพ" />
-      <PreviewRow when="11:00" tone="text-time-today" title="ประชุมสรุป Q3 กับฝ่ายขาย" sub="รายงานประจำเดือน" />
-      <PreviewRow when="15:00" tone="text-time-today" title="รีวิวเอกสารสัญญาผู้รับเหมา" sub="งานฝากทั่วไป · สั่งโดย คุณวิชัย" last />
-    </div>
+    <>
+      {PREVIEW.map((r, i) => (
+        <div key={r.title} className={`flex items-start gap-4 px-[18px] py-3.5 ${i > 0 ? 'border-t border-rule-soft' : ''}`}>
+          <span className={`${r.em ? 't-time-em' : 't-time'} ${r.tone} w-[52px] shrink-0 pt-0.5`}>{r.when}</span>
+          <span className="min-w-0">
+            <span className="block text-[15px] leading-[1.35] font-medium">{r.title}</span>
+            <span className="mt-0.5 block text-[13px] text-ink-3">{r.sub}</span>
+          </span>
+        </div>
+      ))}
+    </>
   )
 }
 
-function PreviewRow({ when, tone, title, sub, em, last }: {
-  when: string
-  tone: string
-  title: string
-  sub: string
-  em?: boolean
-  last?: boolean
-}) {
+function Preview() {
   return (
-    <div className={`flex items-center gap-4 px-[18px] py-[13px] ${last ? '' : 'border-b border-rule-soft'}`}>
-      <span className={`${em ? 't-time-em' : 't-time'} ${tone} w-[74px] shrink-0`}>{when}</span>
-      <span className="min-w-0">
-        <span className="block text-[13px] leading-[1.35]">{title}</span>
-        <span className="t-caption mt-1 block text-ink-3">{sub}</span>
-      </span>
+    <div className="overflow-hidden rounded-[12px] border border-rule-soft bg-sheet">
+      <PreviewRows />
     </div>
   )
 }
 
 /* ---------------------------------------------------------------- sign in -- */
 
-function SignIn({ outcome }: { outcome: Outcome }) {
+const TITLE: Record<Outcome, string> = {
+  ready: 'เริ่มใช้งานหรือเข้าสู่ระบบ',
+  failed: 'เริ่มใช้งานหรือเข้าสู่ระบบ',
+  expired: 'ยินดีต้อนรับกลับ',
+  suspended: 'เข้าสู่ระบบไม่ได้',
+}
+
+function SignInPanel({ outcome }: { outcome: Outcome }) {
   /**
    * Pressing the button navigates away, so the page stays mounted and visible
    * for as long as the redirect takes. Without this the screen looks like the
@@ -203,22 +218,21 @@ function SignIn({ outcome }: { outcome: Outcome }) {
     : 'เข้าสู่ระบบด้วย LINE'
 
   return (
-    <main className="flex justify-center px-5 py-10 lg:items-center lg:px-6 lg:py-16">
-      <div className="w-full max-w-[396px]">
-        {/* Written for both kinds of visitor. The landing page's "เริ่มใช้ด้วย
-            LINE" lands here, so "ยินดีต้อนรับกลับ" greeted most people as
-            returning users they are not. */}
-        <p className="t-eyebrow text-ink-3">ใช้งานด้วย LINE</p>
-        <h2 className="font-display mt-1 text-[28px] leading-[1.25] font-medium tracking-[-0.5px]">
-          เริ่มใช้งานหรือเข้าสู่ระบบ
-        </h2>
-        <p className="mt-2.5 text-[14px] leading-[1.55] text-ink-2">
-          ใช้บัญชี LINE เดิมได้เลย ระบบจะสร้างบัญชีให้เมื่อเข้าครั้งแรก
-        </p>
+    <div>
+      <h1 className="font-display text-[24px] leading-[1.3] font-semibold tracking-[-0.4px]">{TITLE[outcome]}</h1>
 
-        {outcome !== 'ready' && <Notice outcome={outcome} />}
+      {outcome !== 'ready' && <Notice outcome={outcome} />}
 
-        {/* Keep the anchor mounted until the browser follows it, including on iOS. */}
+      {outcome === 'suspended' ? (
+        <Link
+          to="/contact"
+          className="wc-lift mt-4 flex h-[52px] w-full items-center justify-center rounded-control bg-ink text-[15px] font-medium text-on-dark"
+        >
+          ติดต่อเรา
+        </Link>
+      ) : (
+        // Keep the anchor mounted until the browser follows it, including on iOS.
+        // The LINE green, charcoal label: white on #06C755 measures 2.26:1.
         <a
           href="/api/auth/line/start"
           aria-disabled={starting}
@@ -227,131 +241,76 @@ function SignIn({ outcome }: { outcome: Outcome }) {
             if (starting) event.preventDefault()
             else setStarting(true)
           }}
-          className={`wc-lift mt-6 flex h-[54px] w-full items-center justify-center gap-3 rounded-control text-[14px] font-semibold text-ink ${starting ? 'bg-line/35' : 'bg-line'}`}
+          className={`wc-lift mt-4 flex h-[52px] w-full items-center justify-center gap-3 rounded-control text-[15px] font-semibold text-ink ${starting ? 'bg-line/35' : 'bg-line'} ${outcome === 'ready' ? 'mt-5' : ''}`}
         >
           <LineMark className="size-[24px]" />
+          <span aria-hidden className="h-6 w-px bg-ink/20" />
           {label}
         </a>
+      )}
 
-        <p className="t-note mt-3.5 text-ink-3">
-          {starting
-            ? 'กำลังเปิด LINE หากไม่เปลี่ยนหน้า โปรดลองอีกครั้ง'
-            : 'ไม่ต้องตั้งรหัสผ่านใหม่ และไม่ต้องจำเพิ่มอีกอัน'}
-        </p>
-
-        <a
-          href="/api/auth/line/start?manual=true"
-          className="mt-4 inline-flex min-h-11 items-center text-[13px] text-ink-2 underline underline-offset-2"
-        >
-          เปิดแอป LINE ไม่ได้? เข้าสู่ระบบผ่านเบราว์เซอร์
-        </a>
-
-        <div className="mt-6 h-px w-full bg-rule-soft" />
-
-        <p className="t-label mt-5 text-ink-3">ก่อนกด รู้ไว้สองข้อ</p>
-        <ol className="mt-3.5 space-y-3">
-          <Fact n="1" title="LINE จะถามว่าอนุญาตให้ WorkCatch เห็นอะไร" titleShort="LINE จะถามว่าอนุญาตให้เห็นอะไร">
-            <span className="hidden lg:inline">
-              ขอแค่ชื่อและรูปโปรไฟล์ ไม่โพสต์อะไรลงไทม์ไลน์ และไม่อ่านแชทของคุณ
-            </span>
-            <span className="lg:hidden">ขอแค่ชื่อและรูปโปรไฟล์ ไม่โพสต์อะไร และไม่อ่านแชทของคุณ</span>
-          </Fact>
-          <Fact n="2" title="ต้องเพิ่มบัญชีทางการเป็นเพื่อน">
-            <>
-              <span className="hidden lg:inline">
-                LINE ยอมให้ส่งข้อความหาเฉพาะคนที่เป็นเพื่อน ถ้าไม่เพิ่ม จะใช้เว็บได้แต่จะไม่มีการเตือน
-              </span>
-              <span className="lg:hidden">ถ้าไม่เพิ่ม จะใช้เว็บได้แต่จะไม่มีการเตือนส่งถึง</span>
-              <span className="-my-3 block">
-                <a
-                  href={LINE_OA_ADD_FRIEND_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="เพิ่ม WorkCatch เป็นเพื่อนใน LINE (เปิดในแท็บใหม่)"
-                  className="flex min-h-11 items-center text-[12.5px] font-medium text-ink underline underline-offset-2"
-                >
-                  เพิ่มเพื่อน {LINE_OA_ID} <span aria-hidden>↗</span>
-                </a>
-              </span>
-            </>
-          </Fact>
-        </ol>
-
-        {/* After the sign-in button in the tab order, deliberately: the first
-            Tab on this screen has to land on the one action it exists for. */}
-        <p className="t-note mt-6 text-ink-3">
-          การเข้าสู่ระบบถือว่ายอมรับ
-          <Link to="/terms" className="underline underline-offset-2 hover:text-ink">ข้อกำหนดการใช้บริการ</Link>
-          {' '}และ
-          <Link to="/privacy" className="underline underline-offset-2 hover:text-ink">นโยบายความเป็นส่วนตัว</Link>
-        </p>
-      </div>
-    </main>
-  )
-}
-
-/**
- * What went wrong, and — more important — what did not.
- *
- * Both messages exist to say that nothing was lost, because that is the actual
- * question a person has when a sign-in bounces them back. The glyph is there so
- * the tone is not carried by colour alone.
- */
-function Notice({ outcome }: { outcome: Exclude<Outcome, 'ready'> }) {
-  const bad = outcome !== 'expired'
-  return (
-    <div
-      role="alert"
-      className={`mt-5 flex gap-3 rounded-sheet border px-3.5 py-3 ${
-        bad ? 'border-error/35 bg-error/[0.06]' : 'border-rule bg-ground'
-      }`}
-    >
-      <span
-        aria-hidden
-        className={`mt-px shrink-0 font-mono text-[12px] ${bad ? 'text-error' : 'text-ink-2'}`}
+      <a
+        href="/api/auth/line/start?manual=true"
+        className="mt-2 flex min-h-11 items-center justify-center gap-1.5 text-[14px] text-ink-2 hover:text-ink"
       >
-        {bad ? '✕' : '!'}
-      </span>
-      <p className="text-[13px] leading-[1.5] text-ink-2">
-        {outcome === 'failed' &&
-          'ยังเข้าสู่ระบบไม่สำเร็จ กรุณาลองอีกครั้ง หากยังเข้าไม่ได้ โปรดติดต่อผู้ดูแล'}
-        {outcome === 'expired' &&
-          'ออกจากระบบอัตโนมัติเพราะไม่ได้ใช้งานนาน งานและบันทึกทั้งหมดยังอยู่ครบ'}
-        {outcome === 'suspended' && (
-          <>
-            บัญชีนี้ถูกระงับการใช้งาน จึงเข้าสู่ระบบไม่ได้ ถ้าคิดว่าเป็นความผิดพลาด{' '}
-            <Link to="/contact" className="underline underline-offset-2 hover:text-ink">
-              ติดต่อเรา
-            </Link>
-          </>
-        )}
+        เข้าสู่ระบบผ่านเบราว์เซอร์
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1H6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </a>
+
+      {/* After the sign-in button in the tab order, deliberately: the first
+          Tab on this screen has to land on the one action it exists for. */}
+      <p className="mt-4 text-center text-[13px] leading-[1.6] text-ink-3">
+        การเข้าสู่ระบบถือว่ายอมรับ{' '}
+        <Link to="/terms" className="underline underline-offset-2 hover:text-ink">ข้อกำหนดการใช้บริการ</Link>
+        {' '}และ{' '}
+        <Link to="/privacy" className="underline underline-offset-2 hover:text-ink">นโยบายความเป็นส่วนตัว</Link>
       </p>
     </div>
   )
 }
 
-function Fact({ n, title, titleShort, children }: {
-  n: string
-  title: string
-  titleShort?: string
-  children: React.ReactNode
-}) {
+/**
+ * What went wrong, and — more important — what did not. The glyph is there so
+ * the tone is not carried by colour alone.
+ */
+const NOTICE = {
+  expired: {
+    box: 'bg-ground text-ink-2',
+    text: 'ออกจากระบบอัตโนมัติเพราะไม่ได้ใช้งานนาน งานทั้งหมดยังอยู่ครบ',
+    icon: (
+      <>
+        <circle cx="8" cy="8" r="6.25" />
+        <path d="M8 4.5V8l2.5 1.5" />
+      </>
+    ),
+  },
+  failed: {
+    box: 'bg-time-soon-wash text-time-soon-strong',
+    text: 'ยกเลิกที่หน้า LINE จึงยังไม่ได้เข้าสู่ระบบ',
+    icon: <path d="m3.5 3.5 9 9m0-9-9 9" />,
+  },
+  suspended: {
+    box: 'bg-error/[0.08] text-error',
+    text: 'บัญชีนี้ถูกระงับการใช้งาน',
+    icon: (
+      <>
+        <path d="M8 2 14.5 13.5h-13L8 2Z" />
+        <path d="M8 6.5v3M8 11.5v.01" />
+      </>
+    ),
+  },
+} as const
+
+function Notice({ outcome }: { outcome: Exclude<Outcome, 'ready'> }) {
+  const n = NOTICE[outcome]
   return (
-    <li className="flex gap-3">
-      <span className="t-caption w-3.5 shrink-0 text-ink-3">{n}</span>
-      <span className="min-w-0">
-        <span className="block text-[13px] leading-[1.3] font-medium">
-          {titleShort ? (
-            <>
-              <span className="hidden lg:inline">{title}</span>
-              <span className="lg:hidden">{titleShort}</span>
-            </>
-          ) : (
-            title
-          )}
-        </span>
-        <span className="mt-1 block text-[12px] leading-[1.45] text-ink-3">{children}</span>
-      </span>
-    </li>
+    <div role="alert" className={`mt-4 flex items-start gap-3 rounded-control px-3.5 py-3 ${n.box}`}>
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0">
+        {n.icon}
+      </svg>
+      <p className="text-[14px] leading-[1.5]">{n.text}</p>
+    </div>
   )
 }

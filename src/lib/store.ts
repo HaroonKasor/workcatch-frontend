@@ -201,7 +201,7 @@ export const store = {
       next.status = 'TODO'
     }
     // Any edit is somebody having looked at the draft, as on the server.
-    if (Object.keys(patch).some((k) => k !== 'subtasks')) next.parseConfidence = undefined
+    if (Object.keys(patch).some((k) => k !== 'subtasks' && k !== 'attachments' && k !== 'links')) next.parseConfidence = undefined
     // completedAt is derived from status, never set by the caller: two sources
     // for one fact is how a task ends up marked done with no completion time.
     if (rest.status !== undefined) {

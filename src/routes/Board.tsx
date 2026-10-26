@@ -6,6 +6,8 @@ import { priorityTitle, projectDot, statusLabel, timeText, timeWeight } from '..
 import { Link } from 'react-router-dom'
 import type { Task, TaskStatus } from '../lib/types'
 import { useNow } from '../lib/useNow'
+import { useIsDesktop } from '../lib/useMedia'
+import { BoardMobile } from '../components/mobile/BoardMobile'
 
 /**
  * /app/board — Figma v2 423:941; v1 44:567
@@ -42,9 +44,11 @@ export default function Board() {
   const { data, isPending } = useTasks()
   const now = useNow()
   const quickAdd = useQuickAdd()
+  const desktop = useIsDesktop()
   if (isPending) return <BoardSkeleton />
 
   const tasks = data ?? []
+  if (!desktop) return <BoardMobile tasks={tasks} now={now} />
 
   return (
     <>

@@ -6,6 +6,9 @@ import { needsReview } from '../lib/tasks'
 import type { ParseCandidate, Task } from '../lib/types'
 import { useNow } from '../lib/useNow'
 import { SourceMessage } from '../components/SourceMessage'
+import { useIsDesktop } from '../lib/useMedia'
+import { MobileListSkeleton } from '../components/mobile/States'
+import { InboxMobile } from '../components/mobile/InboxMobile'
 import { Skeleton as Block, SkeletonPageHeader, SkeletonScreen } from '../components/Skeleton'
 
 /**
@@ -39,8 +42,9 @@ function InboxSkeleton() {
 export default function Inbox() {
   const { data, isPending } = useTasks()
   const now = useNow()
+  const desktop = useIsDesktop()
 
-  if (isPending) return <InboxSkeleton />
+  if (isPending) return desktop ? <InboxSkeleton /> : <MobileListSkeleton title="กล่องรับงาน" label="กำลังโหลดกล่องรับงาน" />
 
   const inbox = (data ?? []).filter((t) => t.status === 'INBOX')
   // Uncertain drafts sort to the top ahead of the plain triage cards: they are
@@ -51,6 +55,7 @@ export default function Inbox() {
     return byReview !== 0 ? byReview : a.createdAt.localeCompare(b.createdAt)
   })
   const review = inbox.filter(needsReview).length
+  if (!desktop) return <InboxMobile items={items} now={now} />
 
   return (
     <>
@@ -67,9 +72,6 @@ export default function Inbox() {
           {items.length === 0 ? (
             <div className="rounded-sheet border border-rule bg-sheet px-7 py-11">
               <p className="t-section">ทุกงานมีที่อยู่แล้ว</p>
-              <p className="t-body text-ink-2 mt-2 leading-relaxed">
-                งานใหม่ที่รับเข้ามาจะมารออยู่ตรงนี้ กด เพิ่มงาน เพื่อบันทึกงานถัดไป
-              </p>
             </div>
           ) : (
             items.map((t) =>
@@ -131,9 +133,7 @@ function ReviewCard({ task, now }: { task: Task; now: Date }) {
       {/* The parser's own sentence when it sent one, because only it knows which
           fragment it choked on. The fallback still says the two things that
           matter: nothing is scheduled, and nothing will be sent. */}
-      <p className="t-body text-ink-2 mt-2.5 leading-relaxed">
-        {task.parseNote ?? 'ระบบอ่านเวลาในข้อความนี้ได้ไม่ชัด จึงยังไม่ตั้งกำหนดส่งและยังไม่ตั้งเตือน'}
-      </p>
+      {task.parseNote && <p className="t-body text-ink-2 mt-2.5 leading-relaxed">{task.parseNote}</p>}
 
       {task.sourceMessage && <SourceMessage task={task} />}
 

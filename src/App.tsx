@@ -21,7 +21,8 @@ import NoteTrash from './routes/NoteTrash'
 import Notifications from './routes/Notifications'
 import Projects from './routes/Projects'
 import ProjectDetail from './routes/ProjectDetail'
-import Entry from './routes/Entry'
+import NotFound from './routes/NotFound'
+import ConnectLine from './routes/ConnectLine'
 import Settings from './routes/Settings'
 import TaskDetail from './routes/TaskDetail'
 import Tasks from './routes/Tasks'
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
           <Route path="upgrade" element={<Upgrade />} />
+          <Route path="connect-line" element={<ConnectLine />} />
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>
@@ -77,7 +79,7 @@ export default function App() {
 
         {/* An unknown path asks the same question rather than assuming the
             visitor is signed in. */}
-        <Route path="*" element={<Entry />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

@@ -243,9 +243,7 @@ export function CredentialsBlock({
           >
             เปิดดู — ต้องยืนยันตัวตน<span className="hidden lg:inline">อีกครั้ง</span>
           </button>
-          <p className="mt-2.5 text-[12px] leading-[1.45] text-ink-3">
-            ค่าที่ซ่อนไว้ไม่ถูกนำไปค้นหา ไม่ส่งทาง LINE และไม่ปรากฏใน log
-          </p>
+          <p className="mt-2.5 text-[12px] leading-[1.45] text-ink-3">ไม่ถูกนำไปค้นหา ไม่ส่งทาง LINE ไม่ปรากฏใน log</p>
           {revealError && <p role="alert" className="mt-2 text-[12px] leading-[1.45] text-error">{revealError}</p>}
         </>
       )}

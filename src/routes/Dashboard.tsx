@@ -5,7 +5,10 @@ import { PostponeButton } from '../components/PostponeMenu'
 import { useQuickAdd } from '../components/QuickAdd'
 import { useLineStatus, useTasks } from '../lib/api'
 import { LINE_OA_ADD_FRIEND_URL } from '../lib/line'
-import { clock, gutterLabel, longDate, timeStateOf } from '../lib/time'
+import { clock, gutterLabel, longDate, remaining, timeStateOf } from '../lib/time'
+import { useIsDesktop } from '../lib/useMedia'
+import { Icon } from '../components/mobile/Icon'
+import { TodayMobile } from '../components/mobile/TodayMobile'
 import type { Task } from '../lib/types'
 import { useNow } from '../lib/useNow'
 
@@ -21,6 +24,7 @@ export default function Dashboard() {
   const { data, isPending, isError, refetch } = useTasks()
   const line = useLineStatus()
   const now = useNow()
+  const desktop = useIsDesktop()
 
   if (isPending) return <Skeleton />
   if (isError) return <LoadFailed onRetry={() => void refetch()} />
@@ -47,21 +51,36 @@ export default function Dashboard() {
     .sort((a, b) => a.dueAt!.localeCompare(b.dueAt!))
     .slice(0, 3)
 
+  const banner = line.data && line.data.friendState !== 'FRIEND' && data.length > 0 && (
+    <div role="status" className="mx-4 mt-2 rounded-sheet border border-rule bg-sheet px-4 py-3 lg:mx-0 lg:mt-6 lg:px-5 lg:py-4">
+      <p className="text-[14px] font-semibold text-ink">ยังยืนยันสถานะการแจ้งเตือน LINE ไม่ได้</p>
+      <div className="mt-2 flex flex-wrap gap-x-5 text-[14px] font-medium lg:text-[13px]">
+        <a href={LINE_OA_ADD_FRIEND_URL} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center text-brand underline underline-offset-2 lg:min-h-9">เพิ่มเพื่อน LINE ↗</a>
+        <Link to="/app/settings" className="flex min-h-11 items-center text-brand underline underline-offset-2 lg:min-h-9">ทดสอบการแจ้งเตือน</Link>
+      </div>
+    </div>
+  )
+
+  if (!desktop) {
+    return (
+      <TodayMobile
+        open={open}
+        late={late}
+        doneToday={doneToday}
+        upcoming={upcoming}
+        now={now}
+        banner={banner}
+        empty={data.length === 0 ? <div className="px-4"><FirstVisit /><p className="font-display py-16 text-center text-[20px] font-medium text-ink-2">วันนี้ไม่มีอะไรค้าง</p></div> : undefined}
+      />
+    )
+  }
+
   return (
     <>
       <p className="t-eyebrow text-ink-3">{longDate(now)}</p>
       <h1 className="t-page-title mt-1.5">วันนี้ต้องไม่หล่น</h1>
 
-      {line.data && line.data.friendState !== 'FRIEND' && data.length > 0 && (
-        <div role="status" className="mt-6 rounded-sheet border border-rule bg-sheet px-5 py-4">
-          <p className="text-[14px] font-semibold text-ink">ยังยืนยันสถานะการแจ้งเตือน LINE ไม่ได้</p>
-          <p className="mt-1 text-[13px] text-ink-2">เพิ่ม WorkCatch เป็นเพื่อน แล้วส่งข้อความทดสอบเพื่อเช็กว่ารับการเตือนได้</p>
-          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-medium">
-            <a href={LINE_OA_ADD_FRIEND_URL} target="_blank" rel="noopener noreferrer" className="text-brand underline underline-offset-2">เพิ่มเพื่อน LINE ↗</a>
-            <Link to="/app/settings" className="text-brand underline underline-offset-2">ทดสอบการแจ้งเตือน</Link>
-          </div>
-        </div>
-      )}
+      {banner}
 
       {data.length === 0 ? (
         <FirstVisit />
@@ -101,7 +120,6 @@ export default function Dashboard() {
             {doneToday.length === 0 && upcoming.length === 0 && late.length === 0 ? (
               <div className="py-6">
                 <p className="t-section">วันนี้ไม่มีอะไรค้าง</p>
-                <p className="t-body mt-1.5 text-ink-2">งานที่มีกำหนดส่งทั้งหมดยังอยู่ในเวลา</p>
               </div>
             ) : (
               <ul className="pt-2">
@@ -145,7 +163,7 @@ export default function Dashboard() {
                 <p className="t-caption text-ink-3">ยังไม่ได้จัด {inbox.length}</p>
               </header>
               {inbox.length === 0 ? (
-                <p className="mt-4 text-[13px] text-ink-3">กล่องรับงานว่างแล้ว งานใหม่ที่รับเข้ามาจะมารออยู่ตรงนี้</p>
+                <p className="mt-4 text-[13px] text-ink-3">กล่องรับงานว่างแล้ว</p>
               ) : (
                 <div className="mt-3.5 py-1.5">
                   {inbox.slice(0, 4).map((t, i, list) => (
@@ -158,10 +176,9 @@ export default function Dashboard() {
             <section aria-labelledby="queue-heading" className="min-w-0">
               <header className="flex items-center justify-between">
                 <h2 id="queue-heading" className="t-section">การเตือนถัดไป</h2>
-                <p className="t-caption text-ink-3">ช่องทาง LINE</p>
               </header>
               {queued.length === 0 ? (
-                <p className="mt-4 text-[13px] text-ink-3">ไม่มีการเตือนรออยู่ ตั้งกำหนดส่งให้งานแล้วระบบจะเข้าคิวเตือนให้อัตโนมัติ</p>
+                <p className="mt-4 text-[13px] text-ink-3">ไม่มีการเตือนรออยู่</p>
               ) : (
                 <div className="mt-3.5 py-1.5">
                   {queued.map((t, i) => (
@@ -177,7 +194,6 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
-              <p className="mt-4 text-[12px] leading-[1.4] text-ink-3">ปิดงานแล้วระบบยกเลิกการเตือนที่ยังไม่ส่งให้อัตโนมัติ</p>
             </section>
           </div>
         </>
@@ -243,14 +259,6 @@ function dayKey(d: Date): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(d)
 }
 
-/** "อีก 1 ชม. 19 นาที" */
-function remaining(dueIso: string, now: Date): string {
-  const minutes = Math.max(0, Math.round((Date.parse(dueIso) - now.getTime()) / 60_000))
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return h > 0 ? `อีก ${h} ชม. ${m} นาที` : `อีก ${m} นาที`
-}
-
 function queueTone(t: Task, now: Date): string {
   const s = timeStateOf(t, now)
   return s === 'today' ? 'text-time-today' : s === 'soon' ? 'text-time-soon' : 'text-ink-3'
@@ -279,27 +287,30 @@ function InboxItem({ task, now, last }: { task: Task; now: Date; last: boolean }
   )
 }
 
-/** เริ่มใช้ WorkCatch — Figma 433:2302, for an account with no work yet. */
+/** เริ่มใช้ WorkCatch — Figma 433:2302 and, on a phone, 475:2932: a checklist for an account with no work yet. */
 function FirstVisit() {
   const quickAdd = useQuickAdd()
   return (
-    <section aria-labelledby="start-heading" className="mt-[33px] rounded-sheet border border-rule bg-sheet px-4 pt-5 pb-2 sm:px-[27px]">
-      <h2 id="start-heading" className="text-[15px] font-semibold">เริ่มใช้ WorkCatch</h2>
+    <section aria-labelledby="start-heading" className="mt-[33px] rounded-sheet border border-rule bg-sheet px-4 pt-5 pb-2 max-lg:mt-4 sm:px-[27px]">
+      <div className="flex items-baseline justify-between">
+        <h2 id="start-heading" className="text-[15px] font-semibold max-lg:text-[17px]">เริ่มใช้ WorkCatch</h2>
+        <span className="font-mono text-[13px] text-ink-3">1/4</span>
+      </div>
       <ol className="mt-2">
-        <Step n={1} label="เชื่อม LINE เพื่อรับการเตือน">
-          <a href={LINE_OA_ADD_FRIEND_URL} target="_blank" rel="noopener noreferrer" className="wc-lift inline-flex min-h-9 items-center rounded-control bg-line px-3.5 text-[13px] font-medium text-on-dark">
-            เพิ่มเพื่อน LINE
-          </a>
+        <Step done label="เข้าสู่ระบบด้วย LINE" />
+        <Step label="เพิ่มเพื่อน LINE เพื่อรับการเตือน">
+          <Link to="/app/connect-line" className="wc-lift inline-flex min-h-11 shrink-0 items-center rounded-control bg-line px-3.5 text-[14px] font-medium text-on-dark lg:min-h-9 lg:text-[13px]">
+            เพิ่มเพื่อน
+          </Link>
         </Step>
-        <Step n={2} label="เพิ่มงานแรก">
-          <button type="button" onClick={quickAdd.open} className="wc-lift inline-flex min-h-9 items-center gap-2 rounded-control bg-brand px-3.5 text-[13px] font-medium text-on-dark">
+        <Step label="เพิ่มงานแรก">
+          <button type="button" onClick={quickAdd.open} className="wc-lift inline-flex min-h-11 shrink-0 items-center gap-2 rounded-control border border-rule bg-sheet px-3.5 text-[14px] font-medium lg:min-h-9 lg:text-[13px]">
             + เพิ่มงาน
-            <kbd className="rounded-[4px] bg-on-dark/90 px-1.5 font-mono text-[11px] text-ink">N</kbd>
           </button>
         </Step>
-        <Step n={3} label="ส่งงานจากแชท LINE" last>
-          <a href={LINE_OA_ADD_FRIEND_URL} target="_blank" rel="noopener noreferrer" className="wc-lift inline-flex min-h-9 items-center rounded-control border border-rule bg-sheet px-3.5 text-[13px] font-medium">
-            เปิดแชท WorkCatch
+        <Step label="ส่งงานจากแชท LINE" last>
+          <a href={LINE_OA_ADD_FRIEND_URL} target="_blank" rel="noopener noreferrer" className="wc-lift inline-flex min-h-11 shrink-0 items-center rounded-control border border-rule bg-sheet px-3.5 text-[14px] font-medium lg:min-h-9 lg:text-[13px]">
+            เปิดแชท
           </a>
         </Step>
       </ol>
@@ -307,11 +318,13 @@ function FirstVisit() {
   )
 }
 
-function Step({ n, label, last, children }: { n: number; label: string; last?: boolean; children: React.ReactNode }) {
+function Step({ label, done, last, children }: { label: string; done?: boolean; last?: boolean; children?: React.ReactNode }) {
   return (
-    <li className={`flex items-center gap-4 py-3.5 ${last ? '' : 'border-b border-rule-soft'}`}>
-      <span className="w-3 shrink-0 font-mono text-[12.5px] text-ink-3">{n}</span>
-      <span className="min-w-0 flex-1 text-[14px]">{label}</span>
+    <li className={`flex items-center gap-3.5 py-3 ${last ? '' : 'border-b border-rule-soft'}`}>
+      <span className={`flex size-6 shrink-0 items-center justify-center rounded-full border ${done ? 'border-brand-strong bg-brand-strong text-on-dark' : 'border-rule'}`} aria-hidden>
+        {done && <Icon name="check" size={14} />}
+      </span>
+      <span className={`min-w-0 flex-1 text-[15px] ${done ? 'text-ink-3 line-through' : ''}`}>{label}</span>
       {children}
     </li>
   )
@@ -334,10 +347,7 @@ function Skeleton() {
 function LoadFailed({ onRetry }: { onRetry: () => void }) {
   return (
     <div role="alert" className="rounded-sheet border border-error/35 bg-error/[0.07] px-6 py-5">
-      <p className="text-[14px] font-semibold text-error">ต่อเซิร์ฟเวอร์ไม่ได้</p>
-      <p className="t-body text-ink-2 mt-1.5 leading-relaxed">
-        เช็คการเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่ · งานที่เพิ่มไว้ก่อนหน้าถูกบันทึกแล้ว ไม่หาย
-      </p>
+      <p className="text-[14px] font-semibold text-error">ต่อเซิร์ฟเวอร์ไม่ได้ เช็คอินเทอร์เน็ตแล้วลองใหม่</p>
       <button type="button" onClick={onRetry} className="wc-lift mt-3 min-h-9 rounded-control border border-rule bg-sheet px-3.5 text-[13px] font-medium">
         ลองใหม่
       </button>

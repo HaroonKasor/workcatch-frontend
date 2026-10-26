@@ -415,6 +415,13 @@
     .wc-edit-mark { transition: none; }
   }
 
+  /* On a phone the fields read as plain text, as the phone frames draw them; a
+     tap on the text is what edits it. */
+  @media (max-width: 1023px) {
+    .wc-edit-mark { display: none; }
+    .wc-editable { background-color: transparent; }
+  }
+
   /* Loading placeholder. A skeleton, never a spinner: a spinner says "wait"
      without saying what for, while a skeleton that mirrors the real row heights
      means the page does not jump when the content lands. */

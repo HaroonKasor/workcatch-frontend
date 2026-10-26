@@ -10,6 +10,7 @@ import { fileAction, fileScan, fileStorageNote, noteCategoryLabel } from '../lib
 import { daysUntilLabel, fullDate, sinceLabel } from '../lib/time'
 import type { Note, NoteBlock, Task } from '../lib/types'
 import { useNow } from '../lib/useNow'
+import { NoteDetailMobile } from '../components/mobile/NoteDetailMobile'
 
 /**
  * /app/notes/:id — Figma node 135:1163, side panel 147:1267, file states 147:1333
@@ -60,6 +61,7 @@ export default function NoteDetail() {
 
   return (
     <>
+      <div className="max-lg:hidden">
       {/*
         Phone: a back bar with an overflow menu — Figma 235:1572. The desktop
         breadcrumb tells you where you are in a tree; on a phone there is no tree
@@ -150,7 +152,7 @@ export default function NoteDetail() {
             </div>
           ) : (
             <div className="rounded-sheet border border-rule bg-sheet px-7 py-11">
-              <p className="t-body text-ink-2">บันทึกนี้ยังไม่มีเนื้อหา · กด “แก้ไข” เพื่อเริ่มเขียน</p>
+              <p className="t-body text-ink-2">บันทึกนี้ยังไม่มีเนื้อหา</p>
             </div>
           )}
         </div>
@@ -203,7 +205,7 @@ export default function NoteDetail() {
                   </p>
                 </>
               ) : (
-                <p className="t-body text-ink-2">ยังไม่ได้ตั้งวันทบทวน จึงจะไม่มีการเตือนใดๆ</p>
+                <p className="t-body text-ink-2">ยังไม่ได้ตั้งวันทบทวน</p>
               )}
 
               {pickingReview && (
@@ -243,7 +245,6 @@ export default function NoteDetail() {
           {/* FR-KN-13 — Figma 147:1271 */}
           <section>
             <h2 className="t-section">ประวัติการแก้ไข</h2>
-            <p className="t-body text-ink-2 mt-1.5">เก็บเฉพาะเนื้อหาทั่วไป ไม่เก็บค่าที่ซ่อนไว้</p>
             <div className="mt-3.5 rounded-sheet border border-rule bg-sheet px-5">
               {note.revisions.map((r, i) => (
                 <div
@@ -321,6 +322,22 @@ export default function NoteDetail() {
           ลบ
         </button>
       </div>
+
+      </div>
+      <NoteDetailMobile
+        note={note}
+        project={project}
+        tasks={tasks.data ?? []}
+        now={now}
+        onTick={tick}
+        onPin={() => update.mutate({ id: note.id, patch: { pinned: !note.pinned } })}
+        onReview={setReview}
+        onDelete={() => setConfirming(true)}
+        onRevert={(version) => {
+          revert.mutate({ id: note.id, version })
+          toast({ title: `ย้อนกลับไปเวอร์ชัน ${version} แล้ว` })
+        }}
+      />
 
       <ConfirmDialog
         open={confirming}
@@ -511,7 +528,7 @@ function LinkedTasks({ note, tasks }: { note: Note; tasks: Task[] }) {
       <div className="mt-3.5 rounded-sheet border border-rule bg-sheet px-5">
         {linked.length === 0 ? (
           <p className="t-body text-ink-2 py-3.5 leading-relaxed">
-            ยังไม่ได้ผูกกับงานใด · บันทึกหนึ่งอันผูกกับงานได้หลายงาน ลบงานแล้วบันทึกไม่หายไปด้วย
+            ยังไม่ได้ผูกกับงานใด
           </p>
         ) : (
           linked.map((t) => (

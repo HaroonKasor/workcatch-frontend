@@ -1,3 +1,6 @@
+import { useIsDesktop } from '../lib/useMedia'
+import { BottomSheet, SheetItem } from './mobile/BottomSheet'
+import { Icon } from './mobile/Icon'
 import { useEffect, useId, useRef, useState } from 'react'
 
 /**
@@ -54,6 +57,10 @@ export interface InlineTextProps {
   mark?: boolean
   /** Overrides the screen-reader suffix. Pass "" where the visible text says it. */
   srSuffix?: string
+  /** Opens already editing, for a field whose resting state lives elsewhere. */
+  startEditing?: boolean
+  /** Called whenever the editor closes, saved or not. */
+  onDone?: () => void
 }
 
 export function InlineText({
@@ -64,15 +71,17 @@ export function InlineText({
   onCommit,
   multiline = false,
   type = 'text',
-  textClass = 'text-[12.5px]',
+  textClass = 'text-[12.5px] max-lg:text-[14px]',
   align = 'left',
   required = false,
   requiredMessage,
   maxLength,
   mark = true,
   srSuffix,
+  startEditing = false,
+  onDone,
 }: InlineTextProps) {
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(startEditing)
   const [draft, setDraft] = useState(value)
   const [problem, setProblem] = useState<string | null>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -122,6 +131,7 @@ export function InlineText({
     restore.current = byKeyboard
     setProblem(null)
     setEditing(false)
+    onDone?.()
   }
 
   function commit(byKeyboard: boolean) {
@@ -140,6 +150,7 @@ export function InlineText({
     settled.current = true
     restore.current = byKeyboard
     setEditing(false)
+    onDone?.()
     if (next !== value) onCommit(next)
   }
 
@@ -225,7 +236,7 @@ export function InlineText({
       )}
       {/* Figma 282:22. The only instruction the field gives, and it is the whole
           contract: nothing else on the row claims to save anything. */}
-      <p id={hintId} className="t-caption mt-1.5 text-ink-3">
+      <p id={hintId} className="sr-only">
         Enter บันทึก · Esc ยกเลิก
       </p>
       {problem && (
@@ -266,26 +277,79 @@ export function InlineSelect({
   onCommit: (next: string) => void
   dot?: string
 }) {
+  const [open, setOpen] = useState(false)
+  const desktop = useIsDesktop()
+  const wrap = useRef<HTMLSpanElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const chosen = options.find((o) => o.value === value)
+
+  // The desktop list is a popover: it closes on a click elsewhere and on Esc.
+  useEffect(() => {
+    if (!open || !desktop) return
+    const onDown = (e: MouseEvent) => {
+      if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); trigger.current?.focus() }
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey, true)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey, true)
+    }
+  }, [open, desktop])
+
+  const pick = (next: string) => {
+    setOpen(false)
+    if (next !== value) onCommit(next)
+  }
+
   return (
-    <span className="ml-auto flex min-w-0 items-center justify-end gap-2">
+    <span ref={wrap} className="relative ml-auto flex min-w-0 items-center justify-end gap-2">
       {dot && <span className={`size-1.5 shrink-0 rounded-full ${dot}`} aria-hidden />}
-      <span className="relative flex min-w-0 items-center">
-        <select
+      <button
+        ref={trigger}
+        type="button"
+        aria-haspopup={desktop ? 'listbox' : 'dialog'}
+        aria-expanded={open}
+        aria-label={`${label}: ${chosen?.label ?? ''}`}
+        onClick={() => setOpen(!open)}
+        className="wc-editable flex min-h-11 min-w-0 cursor-pointer items-center gap-1.5 rounded-control bg-transparent py-1 pr-2 pl-2.5 text-right text-[12.5px] transition-colors hover:bg-ink/[0.04] focus-visible:bg-ink/[0.04] max-lg:text-[14px]"
+      >
+        <span className="truncate">{chosen?.label ?? ''}</span>
+        <span aria-hidden className="shrink-0 text-[12px] text-ink-3">⌄</span>
+      </button>
+      {open && desktop && (
+        <ul
+          role="listbox"
           aria-label={label}
-          value={value}
-          onChange={(e) => onCommit(e.target.value)}
-          className="wc-editable min-h-11 w-full cursor-pointer appearance-none truncate rounded-control bg-transparent py-1 pr-6 pl-2.5 text-right text-[12.5px] transition-colors hover:bg-ink/[0.04] focus-visible:bg-ink/[0.04]"
+          className="absolute top-full right-0 z-20 mt-1 max-h-72 min-w-[180px] overflow-y-auto rounded-control border border-rule bg-sheet py-1.5 text-left shadow-[0_8px_28px_rgba(20,23,26,0.16)]"
         >
           {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
+            <li key={o.value} role="option" aria-selected={o.value === value}>
+              <button
+                type="button"
+                autoFocus={o.value === value}
+                onClick={() => pick(o.value)}
+                className={`flex min-h-10 w-full items-center justify-between gap-3 px-3.5 text-left text-[13px] hover:bg-selected focus-visible:bg-selected ${o.value === value ? 'font-medium' : ''}`}
+              >
+                {o.label}
+                {o.value === value && <span aria-hidden className="text-brand-strong">✓</span>}
+              </button>
+            </li>
           ))}
-        </select>
-        <span aria-hidden className="pointer-events-none absolute right-2 text-[12px] text-ink-3">
-          ⌄
-        </span>
-      </span>
+        </ul>
+      )}
+      {!desktop && (
+        <BottomSheet open={open} onClose={() => setOpen(false)} title={label}>
+          {options.map((o) => (
+            <SheetItem key={o.value} onClick={() => pick(o.value)} trailing={o.value === value ? <Icon name="check" size={18} /> : undefined}>
+              {o.label}
+            </SheetItem>
+          ))}
+        </BottomSheet>
+      )}
     </span>
   )
 }

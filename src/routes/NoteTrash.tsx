@@ -3,6 +3,8 @@ import { Skeleton, SkeletonPageHeader, SkeletonScreen } from '../components/Skel
 import { useToast } from '../components/Toast'
 import { useDeletedNotes, useRestoreNote } from '../lib/api'
 import { stamp } from '../lib/time'
+import { MobileBack } from '../components/mobile/MobileHeader'
+import { MobileEmpty } from '../components/mobile/States'
 import type { Note } from '../lib/types'
 import { useNow } from '../lib/useNow'
 
@@ -41,31 +43,48 @@ export default function NoteTrash() {
 
   return (
     <>
-      <p className="t-eyebrow text-ink-3">
+      <div className="-mx-5 -mt-3 lg:hidden"><MobileBack to="/app/notes" label="บันทึก" /></div>
+      <p className="t-eyebrow text-ink-3 max-lg:hidden">
         <Link to="/app/notes" className="hover:text-ink-2">บันทึก</Link>
         {'  ›  '}
-        ถังลบ
+        ถังขยะ
       </p>
-      <h1 className="t-page-title mt-1">ถังลบ</h1>
-      <p className="t-body text-ink-2 mt-2">
-        บันทึกที่ลบแล้วอยู่ที่นี่ {RETENTION_DAYS} วัน กู้คืนได้ตลอดช่วงนั้น ครบกำหนดแล้วระบบลบถาวรให้เอง
-      </p>
+      <h1 className="t-page-title mt-1 max-lg:text-[32px]">ถังขยะ</h1>
+      {notes.length > 0 && (
+        <ul className="-mx-5 mt-3 border-y border-rule lg:hidden">
+          {notes.map((n) => (
+            <li key={n.id} className="flex min-h-[64px] items-center gap-3 border-b border-rule-soft bg-sheet px-4 py-3 last:border-b-0">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[17px] leading-[1.35]">{n.title}</span>
+                <span className="block text-[14px] text-ink-3">
+                  ลบเมื่อ {n.deletedAt ? stamp(n.deletedAt).replace(/ \d{2}:\d{2}$/, '') : '—'} · เหลือ {daysLeft(n.deletedAt ?? new Date().toISOString(), now)} วัน
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  restore.mutate(n)
+                  toast({ title: 'กู้คืนบันทึกแล้ว' })
+                }}
+                className="min-h-11 shrink-0 px-2 text-[16px] font-medium text-brand-strong"
+              >
+                กู้คืน<span className="sr-only"> {n.title}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {notes.length === 0 ? (
-        <div className="mt-7 rounded-sheet border border-rule bg-sheet px-8 py-11">
-          <p className="t-section">ถังลบว่าง</p>
-          <p className="t-body text-ink-2 mt-2.5 max-w-[46ch] leading-relaxed">
-            ยังไม่มีบันทึกที่ถูกลบ · บันทึกที่ลบจากหน้ารายละเอียดจะมารออยู่ตรงนี้ {RETENTION_DAYS} วัน
-          </p>
-          <Link
-            to="/app/notes"
-            className="wc-lift mt-5 inline-flex min-h-11 items-center rounded-control border border-rule px-4.5 text-[13px] font-medium"
-          >
-            กลับไปที่บันทึก
-          </Link>
-        </div>
+        <>
+          <div className="lg:hidden"><MobileEmpty icon="trash">ถังขยะว่าง</MobileEmpty></div>
+          <div className="mt-7 rounded-sheet border border-rule bg-sheet px-8 py-11 max-lg:hidden">
+            <p className="t-section">ถังขยะว่าง</p>
+            <Link to="/app/notes" className="wc-lift mt-5 inline-flex min-h-11 items-center rounded-control border border-rule px-4.5 text-[13px] font-medium">กลับไปที่บันทึก</Link>
+          </div>
+        </>
       ) : (
-        <div className="mt-7 overflow-hidden rounded-sheet border border-rule bg-sheet">
+        <div className="mt-7 overflow-hidden rounded-sheet border border-rule bg-sheet max-lg:hidden">
           {/* The column names only exist where there are columns. At 390px each
               entry is a stacked block and every value says what it is in the
               line itself, so a header row would be naming things that are no
@@ -95,13 +114,6 @@ export default function NoteTrash() {
         </div>
       )}
 
-      {/* Verbatim from the frame. It is the one place the product explains why a
-          restored credentials note comes back empty, and rewording it would put
-          a second version of the rule into circulation. */}
-      <p className="t-body text-ink-3 mt-4 max-w-[80ch] leading-relaxed">
-        ค่าที่ซ่อนไว้ในบันทึกถูกลบถาวรตั้งแต่ตอนกดลบ การกู้คืนจะได้เนื้อหาทั่วไปกลับมา แต่ต้องกรอกข้อมูลเข้าสู่ระบบใหม่ —
-        เพราะการเก็บค่าลับไว้ในถังลบคือการเก็บไว้ในที่ที่ไม่มีใครเฝ้า
-      </p>
     </>
   )
 }

@@ -137,41 +137,30 @@ export function UnlockCodeDialog({
       {view === 'enter' && (
         <form onSubmit={(event) => { event.preventDefault(); submitEnter() }}>
           <p className="mt-[5px] truncate text-[12px] text-ink-2">{subject}</p>
-          <p className="mt-3.5 text-[12.5px] leading-[1.45] text-ink-2">
-            รหัส 6 หลักที่คุณตั้งไว้ตอนเก็บข้อมูลลับครั้งแรก ไม่ใช่รหัสผ่านที่เก็บไว้ในบันทึก · ปลดล็อกครั้งเดียว เปิดดูรายการอื่นได้ 15 นาที
-          </p>
           <CodeInput value={code} inputRef={codeRef} error={message?.startsWith('✕') ?? false} disabled={busy || locked} label="รหัสปลดล็อก 6 หลัก" onChange={(value) => { setCode(clean(value)); setMessage(null) }} />
           {message && <p role="alert" className="mt-3 text-[12px] leading-[1.45] text-error">{message}</p>}
           <button type="button" onClick={() => setView('reset')} disabled={busy} className="mt-3 min-h-11 text-[12px] font-medium text-brand-strong underline underline-offset-2 disabled:opacity-55">
             ลืมรหัสปลดล็อก?
           </button>
-          <InfoBox heading="สิ่งที่จะถูกบันทึก" lines={['เวลาและรายการที่เปิดดู', 'ไม่บันทึกค่าจริงที่เปิดดู']} />
+          <InfoBox heading="สิ่งที่จะถูกบันทึก" lines={['เวลาและรายการที่เปิดดู', 'ไม่บันทึกค่าจริงที่เปิดดู', 'ไม่ใช่รหัสผ่านที่เก็บไว้ในบันทึก']} />
           <Actions onClose={onClose} busy={busy} disabled={code.length !== 6 || locked} label={stepUp.isPending ? 'กำลังปลดล็อก…' : 'ปลดล็อกและเปิดดู'} />
         </form>
       )}
 
       {view === 'set' && (
         <form onSubmit={(event) => { event.preventDefault(); submitSet() }}>
-          <p className="mt-[5px] text-[12px] text-ink-2">ก่อนเก็บข้อมูลเข้าสู่ระบบครั้งแรก</p>
-          <p className="mt-3.5 text-[12.5px] leading-[1.45] text-ink-2">
-            ตั้งรหัส 6 หลักไว้ใช้เปิดดูข้อมูลลับทุกครั้ง ระบบไม่ส่งรหัสนี้ทาง LINE และเปิดข้อมูลให้แทนไม่ได้ ถ้าลืมต้องตั้งใหม่ และข้อมูลลับเดิมจะถูกลบ
-          </p>
           <p className="mt-4 text-[12px] font-medium text-ink-2">รหัส 6 หลัก</p>
           <CodeInput value={code} inputRef={codeRef} error={!!message} disabled={busy} label="รหัสปลดล็อก 6 หลัก" onChange={(value) => { setCode(clean(value)); setMessage(null) }} />
           <p className="mt-4 text-[12px] font-medium text-ink-2">ใส่อีกครั้งเพื่อยืนยัน</p>
           <CodeInput value={confirmation} error={!!message} disabled={busy} label="ยืนยันรหัสปลดล็อก 6 หลัก" onChange={(value) => { setConfirmation(clean(value)); setMessage(null) }} />
           {message && <p role="alert" className="mt-3 text-[12px] leading-[1.45] text-error">{message}</p>}
-          <InfoBox heading="ข้อควรรู้" lines={['ห้ามใช้เลขเรียงหรือซ้ำกัน เช่น 123456, 000000', 'ใส่ผิด 5 ครั้งติดกัน ระบบจะล็อก 15 นาที']} />
+          <InfoBox heading="ข้อควรรู้" lines={['ห้ามใช้เลขเรียงหรือซ้ำกัน เช่น 123456, 000000', 'ใส่ผิด 5 ครั้งติดกัน ระบบจะล็อก 15 นาที', 'ไม่ส่งรหัสนี้ทาง LINE · ถ้าลืมต้องตั้งใหม่ และข้อมูลลับเดิมจะถูกลบ']} />
           <Actions onClose={onClose} busy={busy} disabled={code.length !== 6 || confirmation.length !== 6} label={setCodeMutation.isPending ? 'กำลังตั้งรหัส…' : 'ตั้งรหัส'} />
         </form>
       )}
 
       {view === 'reset' && (
         <div>
-          <p className="mt-[5px] text-[12px] text-ink-2">ข้อมูลเข้าสู่ระบบที่เก็บไว้ทั้งหมดจะถูกลบ</p>
-          <p className="mt-3.5 text-[12.5px] leading-[1.45] text-ink-2">
-            ถ้าไม่มีรหัส ระบบเปิดข้อมูลลับเดิมให้ไม่ได้ เพื่อไม่ให้คนที่ถือเครื่องคุณอยู่ตั้งรหัสใหม่แล้วเปิดดูได้ การตั้งรหัสใหม่จึงต้องลบข้อมูลลับเดิมก่อน
-          </p>
           <InfoBox heading="สิ่งที่จะถูกลบ" lines={['ชื่อผู้ใช้ รหัสผ่าน และหมายเหตุลับทุกรายการ', 'เนื้อหาอื่นในบันทึกยังอยู่ครบ']} />
           <div className="mt-5 flex gap-2.5">
             <button type="button" onClick={onClose} disabled={busy} className="wc-lift min-h-11 flex-1 rounded-control border border-rule text-[13px] font-medium disabled:opacity-55">ยกเลิก</button>

@@ -8,15 +8,21 @@ import { useToast } from '../components/Toast'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { InlineSelect, InlineText } from '../components/InlineEdit'
 import { Skeleton as Block, SkeletonScreen } from '../components/Skeleton'
-import { clock, fromLocalInput, localInput, longDate, stamp, timeLeft, timeStateOf } from '../lib/time'
+import { clock, fromLocalInput, gutterLabel, localInput, longDate, remaining, stamp, timeStateOf } from '../lib/time'
 import {
-  fileAction, fileScan, fileStorageNote, noteCategoryLabel, notificationLabel, notificationTone,
+  noteCategoryLabel, notificationLabel, notificationTone,
   priorityLabel, projectDot, statusLabel, timeText,
 } from '../lib/style'
 import { subtaskProgress } from '../lib/tasks'
 import { useNow } from '../lib/useNow'
-import type { Priority, Subtask, Task, TaskAttachment, TaskReminder, TaskStatus } from '../lib/types'
+import type { Priority, Subtask, Task, TaskReminder, TaskStatus } from '../lib/types'
 import { SourceMessage } from '../components/SourceMessage'
+import { LinksAndFiles } from '../components/TaskLinks'
+import { linkify, LINK_REL } from '../lib/links'
+import { useAiPanel } from '../lib/aiPanel'
+import { BottomSheet, SheetItem } from '../components/mobile/BottomSheet'
+import { Icon } from '../components/mobile/Icon'
+import { PostponeSheet } from '../components/mobile/PostponeSheet'
 
 const STATUSES: TaskStatus[] = ['INBOX', 'TODO', 'IN_PROGRESS', 'WAITING', 'REVIEW', 'DONE', 'CANCELLED']
 const PRIORITIES: Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
@@ -58,6 +64,10 @@ export default function TaskDetail() {
   const toast = useToast()
   const [pickingStatus, setPickingStatus] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [projectSheet, setProjectSheet] = useState(false)
+  const [postponing, setPostponing] = useState(false)
+  const ai = useAiPanel()
 
   if (isPending) return <TaskDetailSkeleton />
   if (isError || !task) return <p className="t-body text-error">ไม่พบงานนี้</p>
@@ -142,20 +152,46 @@ export default function TaskDetail() {
     if (item) updateChecklistItem.mutate({ taskId: task.id, id: item.id, patch: { done: !item.done } })
   }
 
+  const done = task.status === 'DONE'
+  const closedTitle = unsent > 0 ? `ปิดงานแล้ว · ยกเลิกการเตือน ${unsent} รายการ` : 'ปิดงานแล้ว'
+  const dueLead = (() => {
+    if (done && task.completedAt) return `ปิดงานแล้ว ${clock(task.completedAt)}`
+    const g = gutterLabel(task, now)
+    return /^\d\d:\d\d$/.test(g) ? `วันนี้ ${g}` : g
+  })()
+  const dueRest = (() => {
+    if (!task.dueAt) return ''
+    if (done && task.completedAt) {
+      const early = Math.round((Date.parse(task.dueAt) - Date.parse(task.completedAt)) / 60_000)
+      if (early <= 0) return ''
+      return `ก่อนกำหนด ${Math.floor(early / 60)} ชม. ${early % 60} นาที`
+    }
+    return state === 'late' ? '' : remaining(task.dueAt, now)
+  })()
+
   return (
     <>
-      <p className="t-caption text-ink-3">
+      {/* Phone: the back link and the ··· menu, Figma 460:280. */}
+      <div className="flex items-center justify-between pl-2 pr-1 pt-[max(8px,env(safe-area-inset-top))] lg:hidden">
+        <Link to="/app/tasks" className="flex min-h-11 items-center gap-1 px-1 text-[17px]">
+          <Icon name="chevronLeft" size={22} />งาน
+        </Link>
+        <button type="button" onClick={() => setMenuOpen(true)} aria-haspopup="dialog" aria-label="เมนูงานนี้" className="flex size-11 items-center justify-center">
+          <Icon name="dots" size={24} />
+        </button>
+      </div>
+      <p className="t-caption hidden text-ink-3 lg:block">
         <Link to="/app/tasks" className="hover:text-ink-2">รายการงาน</Link>
         {task.project && <> {'  ›  '} {task.project.name}</>}
       </p>
       {/* Figma 37:469 draws the title 744 wide — the left column, not the whole
           page. At rest that is invisible; the moment the field takes its wash it
           is the difference between a highlighted line and a highlighted band. */}
-      <h1 className="mt-1.5 xl:max-w-[744px]">
+      <h1 className="mt-1.5 max-lg:mt-1 max-lg:px-4 xl:max-w-[744px]">
         <InlineText
           label="ชื่องาน"
           value={task.title}
-          textClass="font-display text-[32px] font-semibold leading-[1.3] tracking-[-0.6px]"
+          textClass="font-display text-[24px] lg:text-[32px] font-semibold leading-[1.3] tracking-[-0.6px]"
           required
           requiredMessage="ใส่ชื่องานก่อน"
           maxLength={255}
@@ -164,32 +200,32 @@ export default function TaskDetail() {
       </h1>
 
       {task.dueAt ? (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <span className={`h-[26px] w-[3px] ${state === 'late' ? 'bg-time-late' : 'bg-time-today'}`} aria-hidden />
-          <span className={`font-mono text-[15px] font-semibold ${timeText[state]}`}>
-            {state === 'late' ? 'เลยกำหนดแล้ว' : `ครบกำหนด ${clock(task.dueAt)}`}
-          </span>
-          <span className="t-body text-ink-2">{timeLeft(task.dueAt, now)}</span>
-        </div>
+        <>
+          <div className="mt-4 flex flex-wrap items-center gap-3 max-lg:hidden">
+            <span className={`h-[26px] w-[3px] ${state === 'late' ? 'bg-time-late' : 'bg-time-today'}`} aria-hidden />
+            <span className={`font-mono text-[15px] font-semibold ${timeText[state]}`}>
+              {state === 'late' ? 'เลยกำหนดแล้ว' : `ครบกำหนด ${clock(task.dueAt)}`}
+            </span>
+            <span className="t-body text-ink-2">{state === 'late' ? '' : remaining(task.dueAt, now)}</span>
+          </div>
+          <div className="mt-3 flex items-center gap-3 px-4 lg:hidden">
+            <span className={`h-[26px] w-[3px] shrink-0 ${done ? 'bg-brand' : state === 'late' ? 'bg-time-late' : 'bg-time-today'}`} aria-hidden />
+            <span className={`font-mono text-[16px] font-semibold ${done ? 'text-brand-strong' : timeText[state]}`}>{dueLead}</span>
+            {dueRest && <span className="text-[14px] text-ink-3">{dueRest}</span>}
+          </div>
+        </>
       ) : (
-        <p className="t-body text-ink-2 mt-4">
-          งานนี้ยังไม่มีกำหนดส่ง จึงจะไม่มีการเตือนใดๆ จนกว่าจะใส่วันให้
-        </p>
+        <p className="t-body text-ink-2 mt-4 max-lg:px-4">ยังไม่มีกำหนดส่ง</p>
       )}
 
-      <div className="mt-8 grid gap-8 xl:grid-cols-[1fr_344px]">
-        <div className="min-w-0">
+      <div className="mt-8 grid gap-8 xl:grid-cols-[1fr_344px] max-lg:mt-4 max-lg:flex max-lg:flex-col max-lg:gap-0">
+        <div className="min-w-0 max-lg:contents">
           {/* v2 423:796: the description sits on the page, not in a sheet — it
               is the task's prose, and a box made it read like a form field. */}
-          <Section title="รายละเอียด" bare>
+          <Section title="รายละเอียด" bare className="max-lg:order-1 max-lg:px-4 max-lg:pb-5">
             <div className="py-1">
-              <InlineText
-                label="รายละเอียด"
+              <DescriptionField
                 value={task.description ?? ''}
-                placeholder="ยังไม่ได้ใส่รายละเอียด"
-                multiline
-                maxLength={4000}
-                textClass="t-body text-ink-2 leading-[1.75] whitespace-pre-wrap"
                 onCommit={(next) =>
                   save('รายละเอียด', { description: next }, { description: task.description ?? '' })
                 }
@@ -202,11 +238,11 @@ export default function TaskDetail() {
 
           <Section
             title="รายการย่อย"
-            note={subtasks.total > 0 ? `${subtasks.done} จาก ${subtasks.total} เสร็จแล้ว` : undefined}
-            className="mt-8"
+            note={subtasks.total > 0 ? `${subtasks.done}/${subtasks.total}` : undefined}
+            className="mt-8 max-lg:mt-0 max-lg:order-2"
           >
             {(task.subtasks ?? []).length === 0 && (
-              <Empty>ยังไม่มีรายการย่อย — งานที่ทำหลายขั้นจะติดตามง่ายขึ้นถ้าซอยเป็นข้อ</Empty>
+              <Empty>ยังไม่มีรายการย่อย</Empty>
             )}
             {(task.subtasks ?? []).map((item) => (
               <SubtaskRow
@@ -221,7 +257,7 @@ export default function TaskDetail() {
             {/* Figma 37:494. The add row is drawn as one more subtask line, so
                 the list grows where you are already looking rather than under a
                 button somewhere else. */}
-            <div className="flex items-center gap-1 px-5">
+            <div className="flex items-center gap-1 px-4 lg:px-5">
               <span className="w-11 shrink-0" aria-hidden />
               <div className="min-w-0 flex-1">
                 <InlineText
@@ -230,7 +266,7 @@ export default function TaskDetail() {
                   placeholder="เพิ่มรายการย่อย"
                   required
                   srSuffix=""
-                  textClass="text-[13px] leading-[1.5]"
+                  textClass="text-[13px] leading-[1.5] max-lg:text-[16px]"
                   onCommit={(next) => {
                     createChecklistItem.mutate({ taskId: task.id, label: next })
                   }}
@@ -239,19 +275,11 @@ export default function TaskDetail() {
             </div>
           </Section>
 
-          <Section
-            title="ไฟล์แนบ"
-            note={files.length > 0 ? `${files.length} ไฟล์ · สูงสุด 10 MB ต่อไฟล์` : undefined}
-            className="mt-8"
-          >
-            {files.length === 0 ? (
-              <Empty>ยังไม่มีไฟล์แนบ · รองรับ PDF · XLSX · DOCX · PNG · JPG สูงสุด 10 MB ต่อไฟล์</Empty>
-            ) : (
-              files.map((f, i) => <AttachmentRow key={f.id} file={f} last={i === files.length - 1} />)
-            )}
-          </Section>
+          <div className="max-lg:order-4">
+            <LinksAndFiles task={task} />
+          </div>
 
-          <Section title="ประวัติการเปลี่ยนแปลง" note="เก็บทุกการเปลี่ยนสถานะและข้อมูลสำคัญ" className="mt-8">
+          <Section title="ประวัติการเปลี่ยนแปลง" className="mt-8 max-lg:mt-0 max-lg:order-7">
             <Row when={`สร้างเมื่อ ${longDate(new Date(task.createdAt))}`} what={`จาก ${task.source ?? 'เว็บ'}`} last={!task.completedAt} />
             {task.completedAt && (
               <Row when={`ปิดงาน ${clock(task.completedAt)}`} what="เปลี่ยนสถานะเป็น เสร็จ" last />
@@ -259,8 +287,8 @@ export default function TaskDetail() {
           </Section>
         </div>
 
-        <aside className="min-w-0 space-y-8">
-          <div className="space-y-2.5">
+        <aside className="min-w-0 space-y-8 max-lg:contents">
+          <div className="space-y-2.5 max-lg:hidden">
             {/* Closing a task is reversible from the same button, because the
                 most common correction is realising you closed the wrong one. */}
             {/* min-h-11, not py-3 alone: 13px type in a 12px pad lands on 43.5,
@@ -273,10 +301,7 @@ export default function TaskDetail() {
                 const closing = task.status !== 'DONE'
                 setStatus(
                   closing ? 'DONE' : 'IN_PROGRESS',
-                  closing ? 'ปิดงานแล้ว' : 'เปิดงานอีกครั้งแล้ว',
-                  closing
-                    ? 'ยกเลิกการเตือนที่ยังไม่ส่งให้อัตโนมัติ'
-                    : 'การเตือนที่ตั้งไว้จะกลับมาทำงาน',
+                  closing ? closedTitle : 'เปิดงานอีกครั้งแล้ว',
                 )
               }}
               className={`wc-lift min-h-11 w-full rounded-control py-3 text-[13px] font-medium text-on-dark disabled:opacity-55 ${
@@ -329,7 +354,7 @@ export default function TaskDetail() {
 
           {/* Figma 282:26. Six rows became controls; the last two did not, and
               the gap between them is the whole point of the panel. */}
-          <Section title="ข้อมูลงาน">
+          <Section title="ข้อมูลงาน" className="max-lg:order-3">
             <PropRow k="สถานะ">
               <InlineSelect
                 label="สถานะ"
@@ -422,11 +447,11 @@ export default function TaskDetail() {
             <Fact k="สร้างเมื่อ" v={stamp(task.createdAt)} last />
           </Section>
 
-          <Section title="การเตือน" note="ช่องทาง LINE">
+          <Section title="การเตือน" className="max-lg:order-5">
             {!task.dueAt ? (
-              <Empty>ยังไม่มีกำหนดส่ง จึงยังไม่มีการเตือน ใส่วันให้ก่อนแล้วระบบจะตั้งให้เอง</Empty>
+              <Empty>ยังไม่มีการเตือน</Empty>
             ) : reminders.length === 0 ? (
-              <Empty>ยังไม่มีการเตือนที่ตั้งไว้สำหรับงานนี้</Empty>
+              <Empty>ยังไม่มีการเตือน</Empty>
             ) : (
               reminders
                 .slice()
@@ -437,24 +462,19 @@ export default function TaskDetail() {
             )}
           </Section>
 
-          <p className="t-meta text-ink-3 leading-relaxed">
-            ปิดงานแล้วการเตือนที่ยังไม่ส่งจะถูกยกเลิกอัตโนมัติ · “ส่งแล้ว” หมายถึง LINE รับคำขอไปแล้ว
-            ไม่ได้แปลว่าปลายทางเปิดอ่าน
-          </p>
-
           {/* บันทึกที่เกี่ยวข้อง — v2 423:796. The notes this task is linked to,
               so the how-to is one click from the errand it explains. */}
-          <section>
-            <h2 className="text-[12px] font-medium text-ink-3">บันทึกที่เกี่ยวข้อง</h2>
+          <section className="max-lg:order-6 max-lg:px-4 max-lg:pt-5">
+            <h2 className="text-[12px] font-medium text-ink-3 max-lg:text-[14px] max-lg:text-ink-2">บันทึกที่เกี่ยวข้อง</h2>
             {linkedNotes.length === 0 ? (
-              <p className="mt-2 text-[12.5px] text-ink-3">ยังไม่มีบันทึกที่ผูกกับงานนี้</p>
+              <p className="mt-2 text-[12.5px] text-ink-3 max-lg:text-[14px]">ยังไม่มีบันทึก</p>
             ) : (
               <ul className="mt-1">
                 {linkedNotes.map((n, i) => (
                   <li key={n.id} className={i < linkedNotes.length - 1 ? 'border-b border-rule-soft' : ''}>
                     <Link to={`/app/notes/${n.id}`} className="block py-3 hover:underline">
-                      <span className="block text-[13px]">{n.title}</span>
-                      <span className="mt-0.5 block text-[12px] text-ink-3">{noteCategoryLabel[n.category]}</span>
+                      <span className="block text-[13px] max-lg:text-[16px]">{n.title}</span>
+                      <span className="mt-0.5 block text-[12px] text-ink-3 max-lg:text-[13px]">{noteCategoryLabel[n.category]}</span>
                     </Link>
                   </li>
                 ))}
@@ -466,6 +486,76 @@ export default function TaskDetail() {
           </section>
         </aside>
       </div>
+
+      {/* Phone: the actions the sidebar holds on a desktop, pinned to the thumb. */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 flex gap-3 border-t border-rule bg-sheet px-4 pt-3 lg:hidden"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
+      >
+        {done ? (
+          <button
+            type="button"
+            disabled={update.isPending}
+            onClick={() => setStatus('IN_PROGRESS', 'เปิดงานอีกครั้งแล้ว')}
+            className="wc-lift flex min-h-12 flex-1 items-center justify-center gap-2 rounded-control border border-rule bg-sheet text-[16px] font-medium"
+          >
+            <Icon name="undo" size={20} />เปิดงานอีกครั้ง
+          </button>
+        ) : (
+          <>
+            <button type="button" onClick={() => setPostponing(true)} className="wc-lift flex min-h-12 w-[112px] shrink-0 items-center justify-center gap-2 rounded-control border border-rule bg-sheet text-[16px] font-medium">
+              <Icon name="clock" size={20} />เลื่อน
+            </button>
+            <button
+              type="button"
+              disabled={update.isPending}
+              onClick={() => setStatus('DONE', closedTitle)}
+              className="wc-lift flex min-h-12 flex-1 items-center justify-center gap-2 rounded-control bg-brand-strong text-[16px] font-medium text-on-dark disabled:opacity-55"
+            >
+              <Icon name="check" size={20} />ปิดงานนี้
+            </button>
+          </>
+        )}
+      </div>
+      <PostponeSheet task={postponing ? task : null} onClose={() => setPostponing(false)} />
+
+      <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} label="เมนูงานนี้">
+        <SheetItem icon="chat" onClick={() => { setMenuOpen(false); ai.open() }}>ถามเรื่องงานนี้</SheetItem>
+        <SheetItem icon="user" onClick={() => { setMenuOpen(false); setStatus('WAITING', `เปลี่ยนสถานะเป็น ${statusLabel.WAITING} แล้ว`) }}>รอคนอื่น</SheetItem>
+        <SheetItem icon="folder" onClick={() => { setMenuOpen(false); setProjectSheet(true) }}>ย้ายโปรเจกต์</SheetItem>
+        <SheetItem
+          icon="copy"
+          onClick={() => {
+            setMenuOpen(false)
+            void navigator.clipboard?.writeText(window.location.href).then(
+              () => toast({ title: 'คัดลอกลิงก์งานแล้ว' }),
+              () => toast({ tone: 'error', title: 'คัดลอกไม่สำเร็จ' }),
+            )
+          }}
+        >
+          คัดลอกลิงก์งาน
+        </SheetItem>
+        <SheetItem icon="trash" tone="late" onClick={() => { setMenuOpen(false); setConfirmingDelete(true) }}>ลบงาน</SheetItem>
+      </BottomSheet>
+
+      <BottomSheet open={projectSheet} onClose={() => setProjectSheet(false)} title="ย้ายโปรเจกต์">
+        {(projects ?? []).filter((p) => !p.archivedAt).map((p) => (
+          <SheetItem
+            key={p.id}
+            trailing={task.project?.id === p.id ? <Icon name="check" size={18} /> : undefined}
+            onClick={() => {
+              setProjectSheet(false)
+              if (task.project?.id === p.id) return
+              save('โปรเจกต์', { projectId: p.id }, task.project ? { projectId: task.project.id } : null, p.name)
+            }}
+          >
+            <span className="flex items-center gap-2.5">
+              <span className={`size-2 rounded-full ${projectDot[p.color]}`} aria-hidden />
+              {p.name}
+            </span>
+          </SheetItem>
+        ))}
+      </BottomSheet>
 
       <ConfirmDialog
         open={confirmingDelete}
@@ -553,14 +643,61 @@ function TaskDetailSkeleton() {
 function Section({ title, note, className = '', bare, children }: {
   title: string; note?: string; className?: string; bare?: boolean; children: React.ReactNode
 }) {
+  // On a phone a section is a full-width band: a grey heading with its count, then
+  // rows edge to edge. The description has no heading there; it is the title's prose.
   return (
     <section className={className}>
-      <header className="flex items-center justify-between">
-        <h2 className="t-section">{title}</h2>
-        {note && <p className="t-caption text-ink-3">{note}</p>}
+      <header className={`flex items-center justify-between max-lg:justify-start max-lg:gap-2 max-lg:bg-ground max-lg:px-4 max-lg:pt-5 max-lg:pb-2.5 ${bare ? 'max-lg:hidden' : ''}`}>
+        <h2 className="t-section max-lg:font-sans max-lg:text-[14px] max-lg:font-medium max-lg:text-ink-2">{title}</h2>
+        {note && <p className="t-caption text-ink-3 max-lg:text-[14px]">{note}</p>}
       </header>
-      <div className={bare ? 'mt-2' : 'mt-3 rounded-sheet border border-rule bg-sheet'}>{children}</div>
+      <div className={bare ? 'mt-2 max-lg:mt-0' : 'mt-3 rounded-sheet border border-rule bg-sheet max-lg:mt-0 max-lg:rounded-none max-lg:border-x-0'}>{children}</div>
     </section>
+  )
+}
+
+/**
+ * The description, with any http(s) address in it drawn as a real link — rel
+ * noopener noreferrer nofollow, opening in a new tab. The text is split into
+ * strings and anchors by lib/links.ts and rendered by React, so nothing in it is
+ * ever interpreted as markup. A link cannot sit inside the edit button, so while
+ * there is one the paragraph is plain and a "แก้" button beside it opens the editor.
+ */
+function DescriptionField({ value, onCommit }: { value: string; onCommit: (next: string) => void }) {
+  const [editing, setEditing] = useState(false)
+  const pieces = linkify(value)
+  const field = {
+    label: 'รายละเอียด',
+    value,
+    placeholder: 'ยังไม่ได้ใส่รายละเอียด',
+    multiline: true,
+    maxLength: 4000,
+    textClass: 't-body text-ink-2 leading-[1.75] whitespace-pre-wrap max-lg:text-[16px]',
+    onCommit,
+  }
+  if (!pieces.some((p) => p.href)) return <InlineText {...field} />
+  if (editing) return <InlineText {...field} startEditing onDone={() => setEditing(false)} />
+  return (
+    <div
+      className="flex items-start gap-2"
+      // Tapping the prose edits it; a tap on a link follows the link instead.
+      onClick={(e) => { if (!(e.target as HTMLElement).closest('a')) setEditing(true) }}
+    >
+      <p className="t-body min-w-0 flex-1 leading-[1.75] break-words whitespace-pre-wrap text-ink-2 max-lg:text-[16px]">
+        {pieces.map((piece, i) =>
+          piece.href ? (
+            <a key={i} href={piece.href} target="_blank" rel={LINK_REL} className="font-medium text-brand-strong underline underline-offset-2">
+              {piece.text}
+            </a>
+          ) : (
+            <span key={i}>{piece.text}</span>
+          ),
+        )}
+      </p>
+      <button type="button" onClick={() => setEditing(true)} className="sr-only focus:not-sr-only focus:min-h-11 focus:shrink-0 focus:px-2 focus:text-[13px] focus:text-ink-3">
+        แก้รายละเอียด
+      </button>
+    </div>
   )
 }
 
@@ -572,8 +709,8 @@ function Section({ title, note, className = '', bare, children }: {
  */
 function PropRow({ k, children }: { k: string; children: React.ReactNode }) {
   return (
-    <div className="flex min-h-[50px] items-center justify-between gap-4 border-b border-rule-soft px-5">
-      <span className="t-meta shrink-0 text-ink-3">{k}</span>
+    <div className="flex min-h-[50px] items-center justify-between gap-4 border-b border-rule-soft px-4 lg:px-5">
+      <span className="t-meta shrink-0 text-ink-3 max-lg:text-[14px]">{k}</span>
       {children}
     </div>
   )
@@ -588,16 +725,16 @@ function PropRow({ k, children }: { k: string; children: React.ReactNode }) {
  */
 function Fact({ k, v, last }: { k: string; v: string; last?: boolean }) {
   return (
-    <div className={`flex min-h-[38px] items-center justify-between gap-4 px-5 ${last ? '' : 'border-b border-rule-soft'}`}>
-      <span className="t-meta text-ink-3">{k}</span>
-      <span className="font-mono text-[12px]">{v}</span>
+    <div className={`flex min-h-[38px] items-center justify-between gap-4 px-4 lg:px-5 ${last ? '' : 'border-b border-rule-soft'}`}>
+      <span className="t-meta text-ink-3 max-lg:text-[14px]">{k}</span>
+      <span className="font-mono text-[12px] max-lg:text-[13px]">{v}</span>
     </div>
   )
 }
 
 /** What a section says when it has nothing in it. Never a blank sheet. */
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="t-body text-ink-3 px-5 py-4 leading-relaxed">{children}</p>
+  return <p className="t-body text-ink-3 px-4 py-4 leading-relaxed lg:px-5">{children}</p>
 }
 
 /**
@@ -618,14 +755,14 @@ function SubtaskRow({ item, onTick, onRename }: {
   onRename: (next: string) => void
 }) {
   return (
-    <div className="flex items-center gap-1 border-b border-rule-soft px-5">
+    <div className="flex items-center gap-1 border-b border-rule-soft px-4 lg:px-5">
       <label className="flex min-h-11 w-11 shrink-0 cursor-pointer items-center">
         <input
           type="checkbox"
           checked={item.done}
           onChange={onTick}
           aria-label={item.text}
-          className="size-[15px] shrink-0 accent-[var(--wc-brand-emerald)]"
+          className="size-[22px] shrink-0 accent-[var(--wc-brand-emerald)] lg:size-[15px]"
         />
       </label>
       <div className="min-w-0 flex-1">
@@ -634,59 +771,10 @@ function SubtaskRow({ item, onTick, onRename }: {
           value={item.text}
           required
           maxLength={255}
-          textClass={`text-[13px] leading-[1.5] ${item.done ? 'text-ink-3 line-through' : ''}`}
+          textClass={`text-[13px] leading-[1.5] max-lg:text-[16px] ${item.done ? 'text-ink-3 line-through' : ''}`}
           onCommit={onRename}
         />
       </div>
-    </div>
-  )
-}
-
-/**
- * One row of "ไฟล์แนบ" — the four scan states are specified on Figma 147:1333
- * and read from the same `fileScan` map a note's files use, so the two screens
- * cannot come to different conclusions about the same verdict.
- *
- * BR-KN-04: the download stays disabled for anything that is not CLEAN. The
- * button still says what it WOULD do, because a dead grey button teaches people
- * the page is broken rather than that the file is.
- *
- * A CLEAN file is disabled too, for a different reason: there is no file storage
- * behind this product yet, so the button had nothing to do and did nothing at
- * all when pressed. See `fileStorageNote` — the sentence is shared with the note
- * screen so the two cannot describe the same file differently.
- */
-function AttachmentRow({ file, last }: { file: TaskAttachment; last: boolean }) {
-  const scan = fileScan[file.scan]
-  return (
-    <div className={`flex items-center gap-3 px-5 py-3.5 ${last ? '' : 'border-b border-rule-soft'}`}>
-      <span
-        className="t-label shrink-0 rounded-[3px] bg-ink px-1.5 py-1 text-on-dark"
-        aria-hidden
-      >
-        {file.kind}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-[13px] leading-[1.45] break-all">{file.name}</p>
-          <span className={`shrink-0 rounded-[3px] px-2 py-[2px] font-mono text-[12px] tracking-[1.1px] ${scan.tone}`}>
-            {scan.badge}
-          </span>
-        </div>
-        {/* The kind is already on the chip to the left, so the caption spends
-            its width on the two facts that are not visible anywhere else. */}
-        <p className="t-caption mt-[3px] text-ink-3">
-          {file.size} · {file.scan === 'CLEAN' ? fileStorageNote : scan.note}
-        </p>
-      </div>
-      <button
-        type="button"
-        disabled
-        title={file.scan === 'CLEAN' ? fileStorageNote : scan.note}
-        className="wc-lift min-h-11 shrink-0 rounded-control border border-rule px-2.5 text-[12px] font-medium text-ink-2 disabled:opacity-45"
-      >
-        {fileAction[file.scan]}
-      </button>
     </div>
   )
 }
@@ -702,7 +790,7 @@ function AttachmentRow({ file, last }: { file: TaskAttachment; last: boolean }) 
 function ReminderRow({ reminder, now, last }: { reminder: TaskReminder; now: Date; last: boolean }) {
   const future = new Date(reminder.at).getTime() > now.getTime()
   return (
-    <div className={`px-5 py-3.5 ${last ? '' : 'border-b border-rule-soft'}`}>
+    <div className={`px-4 py-3.5 lg:px-5 ${last ? '' : 'border-b border-rule-soft'}`}>
       <div className="flex items-baseline justify-between gap-3">
         <span className={`font-mono text-[12px] font-medium ${future ? 'text-time-today' : 'text-ink-3'}`}>
           {clock(reminder.at)}
@@ -718,9 +806,9 @@ function ReminderRow({ reminder, now, last }: { reminder: TaskReminder; now: Dat
 
 function Row({ when, what, last }: { when: string; what: string; last?: boolean }) {
   return (
-    <div className={`flex gap-4 px-5 py-3 ${last ? '' : 'border-b border-rule-soft'}`}>
-      <span className="t-caption w-40 shrink-0 text-ink-3">{when}</span>
-      <span className="t-body text-ink-2">{what}</span>
+    <div className={`flex gap-4 px-4 py-3 lg:px-5 ${last ? '' : 'border-b border-rule-soft'}`}>
+      <span className="t-caption w-[104px] shrink-0 text-ink-3 lg:w-40 max-lg:text-[13px]">{when}</span>
+      <span className="t-body text-ink-2 max-lg:text-[15px]">{what}</span>
     </div>
   )
 }

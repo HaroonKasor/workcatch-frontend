@@ -1,7 +1,7 @@
 import { useEffect, useRef, type CSSProperties, type RefObject } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { LineMark } from '../components/LineMark'
-import { SiteFooter, SiteHeader } from '../components/SiteChrome'
+import { SiteContainer, SiteFooter, SiteHeader } from '../components/SiteChrome'
 import { useMe } from '../lib/api'
 import { LINE_OA_ADD_FRIEND_URL, LINE_OA_ID } from '../lib/line'
 import { BrandMark } from '../components/BrandMark'
@@ -27,7 +27,10 @@ export default function Landing() {
   // The legal pages' header links here as /#pricing and the like. A client-side
   // navigation does not scroll to a hash on its own, so this does.
   useEffect(() => {
-    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
+    if (!hash) return
+    // The compact and desktop layouts both carry the section ids; scroll to the one on screen.
+    const shown = [...document.querySelectorAll(`[id="${hash.slice(1)}"]`)].find((el) => (el as HTMLElement).offsetParent)
+    shown?.scrollIntoView()
   }, [hash])
 
   const rootRef = useRef<HTMLDivElement>(null)
@@ -35,9 +38,14 @@ export default function Landing() {
 
   return (
     <div ref={rootRef} className="wc-page-enter wc-scale min-h-viewport bg-sheet text-ink">
-      <div className="mx-auto max-w-[1200px] px-5 lg:px-10">
+      <SiteContainer>
         <SiteHeader signedIn={signedIn} onLanding />
-        <main>
+      </SiteContainer>
+      <main>
+        {/* Phone and iPad (below 1280): Figma 473:2154, 491:2796. */}
+        <Compact signedIn={signedIn} />
+        {/* Desktop: Figma 284:1638. */}
+        <SiteContainer className="hidden xl:block">
           <Hero signedIn={signedIn} />
           <LineFlow />
           <ProductShot />
@@ -47,9 +55,9 @@ export default function Landing() {
           <Pricing signedIn={signedIn} />
           <Trust />
           <Closing signedIn={signedIn} />
-        </main>
-        <SiteFooter />
-      </div>
+        </SiteContainer>
+      </main>
+      <SiteFooter />
     </div>
   )
 }
@@ -340,16 +348,13 @@ function MiniRail() {
 
 /* ---------------------------------------------------------------- content -- */
 
-function SectionHead({ eyebrow, title, lead }: { eyebrow: string; title: React.ReactNode; lead?: string }) {
+function SectionHead({ eyebrow, title }: { eyebrow: string; title: React.ReactNode }) {
   return (
     <div data-reveal>
       <p className="t-eyebrow text-ink-3">{eyebrow}</p>
       <h2 className="font-display mt-3 max-w-[900px] text-[28px] leading-[1.3] font-semibold tracking-[-0.6px] lg:mt-7 lg:text-[40px] lg:tracking-[-1px]">
         {title}
       </h2>
-      {lead && (
-        <p className="mt-4 max-w-[760px] text-[14px] leading-[1.7] text-ink-2 lg:mt-6 lg:text-[16px]">{lead}</p>
-      )}
     </div>
   )
 }
@@ -420,7 +425,6 @@ function Features() {
       <SectionHead
         eyebrow="ทำอะไรได้"
         title="สี่อย่าง ไม่มีอย่างที่ห้า"
-        lead="เครื่องมือจัดการงานส่วนใหญ่พังเพราะพยายามทำทุกอย่าง จนต้องใช้เวลาดูแลตัวมันเองมากกว่าทำงานจริง"
       />
       <div className="mt-8 grid gap-3 lg:mt-12 lg:grid-cols-2 lg:gap-6">
         {FEATURES.map((f, i) => (
@@ -520,7 +524,6 @@ function Pricing({ signedIn }: { signedIn: boolean }) {
       <SectionHead
         eyebrow="ราคา"
         title="ใช้ฟรีได้จริง ไม่ใช่ทดลอง 14 วัน"
-        lead="ส่วนที่คิดเงินคือการเตือนผ่าน LINE เพราะ LINE คิดค่าส่งต่อข้อความ ส่วนการแจ้งเตือนในแอปฟรีไม่จำกัด ไม่ว่าจะใช้แผนไหน"
       />
       <div className="mt-8 grid gap-4 lg:mt-12 lg:grid-cols-2 lg:gap-6">
         {plans.map((p, i) => (
@@ -596,11 +599,146 @@ function Closing({ signedIn }: { signedIn: boolean }) {
       <h2 className="font-display text-[22px] leading-[1.35] font-medium tracking-[-0.4px] lg:text-[36px]">
         เริ่มจากงานเดียวที่กลัวว่าจะลืม
       </h2>
-      <p className="mt-2.5 text-[13px] leading-[1.5] text-ink-2 lg:mt-3 lg:text-[15px]">
-        ใช้เวลาไม่ถึงสองนาที
-        <span className="hidden lg:inline"> และไม่ต้องย้ายงานเก่าทั้งหมดมาก่อน</span>
-      </p>
       <LineStart signedIn={signedIn} className="mx-auto mt-7 w-full lg:w-fit" />
     </section>
+  )
+}
+
+/* ------------------------------------------------- phone and iPad (< 1280) -- */
+
+const TODAY = [
+  { when: '3 วัน', tone: 'text-time-late', title: 'ส่งใบเสนอราคา บ.ทรัพย์เจริญ', sub: 'งานฝากทั่วไป', who: ' · คุณนพ' },
+  { when: '11:00', tone: 'text-time-today', title: 'ประชุมสรุป Q3 กับฝ่ายขาย', sub: 'รายงานประจำเดือน', who: '' },
+  { when: '15:00', tone: 'text-time-soon', title: 'รีวิวเอกสารสัญญาผู้รับเหมา', sub: 'งานฝากทั่วไป', who: ' · คุณวิชัย' },
+]
+
+const COMPACT_STEPS = [
+  { title: 'เข้าด้วยบัญชี LINE', body: 'ไม่ต้องตั้งรหัสผ่านใหม่' },
+  { title: 'เพิ่มบอทเป็นเพื่อน', body: 'LINE ส่งการเตือนได้เฉพาะเพื่อน' },
+  { title: 'จดงานแรก', body: 'พิมพ์ชื่องาน ที่เหลือค่อยเติม' },
+]
+
+const COMPACT_PLANS = [
+  { name: 'ฟรี', price: '฿0', body: 'งานไม่จำกัด · LINE สรุปงานวันละครั้ง' },
+  { name: 'Plus', price: '฿99/เดือน', body: 'LINE เตือนทุกงานตามเวลาที่ตั้ง' },
+]
+
+const H2 = 'font-display text-[26px] leading-[1.3] font-semibold tracking-[-0.5px] md:text-[28px]'
+
+function Compact({ signedIn }: { signedIn: boolean }) {
+  const date = new Intl.DateTimeFormat('th-TH', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date())
+  return (
+    <div className="xl:hidden">
+      <SiteContainer className="grid gap-8 pt-9 pb-12 md:grid-cols-[1fr_330px] md:items-center md:gap-10 md:pt-14 md:pb-14">
+        <div>
+          <h1 className="wc-rise font-display text-[38px] leading-[1.3] font-semibold tracking-[-1px] md:text-[46px]" style={delay(80)}>
+            <span className="block">งานที่รับปากไว้</span>
+            <span className="block">จะไม่หล่นอีก</span>
+          </h1>
+          <p className="wc-rise mt-4 text-[16px] leading-[1.6] text-ink-2" style={delay(180)}>
+            รับงานจาก LINE อีเมล และห้องประชุมไว้ที่เดียว{' '}
+            <br />
+            แล้วเตือนทาง LINE ก่อนถึงกำหนด
+          </p>
+          <div className="wc-rise mt-6" style={delay(260)}>
+            <LineStart signedIn={signedIn} className="w-full md:w-[300px]" />
+            <p className="mt-3 text-[13px] text-ink-3">ฟรี ไม่ต้องใส่บัตร</p>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-[12px] border border-rule-soft bg-sheet shadow-[0_8px_24px_rgba(20,24,26,0.08)]">
+          <p className="flex items-baseline gap-2.5 bg-ground px-4 py-3">
+            <span className="font-display text-[17px] font-semibold">วันนี้</span>
+            <span className="text-[13px] text-ink-3">{date}</span>
+          </p>
+          {TODAY.map((r) => (
+            <div key={r.title} className="flex gap-4 border-t border-rule-soft px-4 py-3.5">
+              <span className={`t-time w-[52px] shrink-0 pt-0.5 ${r.tone}`}>{r.when}</span>
+              <span className="min-w-0">
+                <span className="block text-[15px] leading-[1.35] font-medium">{r.title}</span>
+                <span className="mt-0.5 block text-[13px] text-ink-3">
+                  {r.sub}
+                  <span className="md:hidden">{r.who}</span>
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </SiteContainer>
+
+      <section id="how" className="scroll-mt-4 bg-ground">
+        <SiteContainer className="py-10 md:py-12">
+          <h2 className={H2}>สามขั้น จบใน 2 นาที</h2>
+          <ol className="mt-5 md:mt-6 md:grid md:grid-cols-3 md:gap-6">
+            {COMPACT_STEPS.map((s, i) => (
+              <li key={s.title} className="flex gap-4 border-t border-rule py-4 first:border-t-0 md:block md:first:border-t">
+                <span className="t-time w-9 shrink-0 pt-1 text-brand-strong md:block md:pb-3">{String(i + 1).padStart(2, '0')}</span>
+                <span className="block">
+                  <span className="block text-[17px] leading-[1.4] font-medium">{s.title}</span>
+                  <span className="mt-1 block text-[14px] text-ink-2">{s.body}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </SiteContainer>
+      </section>
+
+      <section id="features" className="scroll-mt-4">
+        <SiteContainer className="grid gap-6 py-10 md:grid-cols-[1fr_320px] md:items-start md:gap-10 md:py-12">
+          <div>
+            <h2 className={H2}>ทักบอทแล้วกลายเป็นงาน</h2>
+            <p className="mt-3 text-[15px] leading-[1.6] text-ink-2">พิมพ์ภาษาคน ระบบอ่านวันเวลาให้ ถ้าไม่ชัดจะถามก่อน</p>
+          </div>
+          <div className="space-y-2.5 rounded-control bg-line-chat p-3">
+            <p className="ml-auto w-fit rounded-[14px] bg-line px-3.5 py-2.5 text-[14px] text-ink">เตือนส่งรายงานพรุ่งนี้ 10 โมง</p>
+            <div className="w-[88%] overflow-hidden rounded-[14px] bg-sheet">
+              <div className="px-3.5 py-3">
+                <p className="text-[13px] text-brand-strong">สร้างงานแล้ว</p>
+                <p className="mt-0.5 text-[15px] font-medium">ส่งรายงาน</p>
+                <p className="t-time mt-0.5 text-ink-2">พรุ่งนี้ 10:00</p>
+              </div>
+              {['เปิดงาน', 'เปลี่ยนเวลา'].map((a) => (
+                <p key={a} className="flex min-h-11 items-center justify-center border-t border-rule-soft text-[14px] font-medium text-brand-strong">{a}</p>
+              ))}
+            </div>
+            <div className="w-[88%] rounded-[14px] bg-sheet px-3.5 py-3">
+              <p className="text-[13px] text-time-today-strong">อีก 1 ชั่วโมงถึงกำหนด</p>
+              <p className="mt-0.5 text-[14px]">ส่งรายงาน · วันนี้ 10:00</p>
+            </div>
+          </div>
+        </SiteContainer>
+      </section>
+
+      <section id="pricing" className="scroll-mt-4 bg-ground">
+        <SiteContainer className="py-10 md:py-12">
+          <h2 className={H2}>ใช้ฟรีได้จริง ไม่ใช่ทดลอง 14 วัน</h2>
+          <div className="mt-5 md:mt-6 md:grid md:grid-cols-2 md:gap-5">
+            {COMPACT_PLANS.map((p) => (
+              <div key={p.name} className="border-t border-rule py-4 last:border-b md:border md:bg-sheet md:p-5 md:last:border-b">
+                <p className="flex items-baseline justify-between gap-3">
+                  <span className="text-[17px] font-semibold">{p.name}</span>
+                  <span className="font-mono text-[15px] font-medium">{p.price}</span>
+                </p>
+                <p className="mt-1 text-[14px] text-ink-2">{p.body}</p>
+              </div>
+            ))}
+          </div>
+          <Link
+            to={signedIn ? '/app/upgrade' : '/login'}
+            className="wc-lift mt-5 flex min-h-11 items-center justify-center rounded-control border border-rule bg-sheet px-5 text-[14px] font-medium md:inline-flex"
+          >
+            ดูราคาทั้งหมด
+          </Link>
+        </SiteContainer>
+      </section>
+
+      <SiteContainer className="py-10 md:flex md:items-center md:justify-between md:gap-8 md:py-14">
+        <h2 className={H2}>
+          เริ่มจากงานเดียว{' '}
+          <br className="md:hidden" />
+          ที่กลัวว่าจะลืม
+        </h2>
+        <LineStart signedIn={signedIn} className="mt-6 w-full md:mt-0 md:w-[280px] md:shrink-0" />
+      </SiteContainer>
+    </div>
   )
 }

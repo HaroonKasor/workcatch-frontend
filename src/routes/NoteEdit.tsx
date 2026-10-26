@@ -164,7 +164,13 @@ function NoteForm({ note }: { note?: Note }) {
 
   return (
     <>
-      <p className="t-eyebrow text-ink-3">
+      {/* Phone — Figma 468:1391: cancel, what this is, save. */}
+      <div className="sticky top-0 z-30 -mx-5 -mt-3 mb-3 flex min-h-14 items-center justify-between border-b border-rule bg-ground/95 px-2 pt-[max(0px,env(safe-area-inset-top))] backdrop-blur-[2px] lg:hidden">
+        <Link to={cancelTo} className="flex min-h-11 items-center px-3 text-[16px] text-ink-2">ยกเลิก</Link>
+        <span className="text-[16px] font-medium">{editing ? 'แก้บันทึก' : 'บันทึกใหม่'}</span>
+        <button type="button" onClick={save} disabled={create.isPending || update.isPending} className="flex min-h-11 items-center px-3 text-[16px] font-semibold text-brand-strong disabled:opacity-55">บันทึก</button>
+      </div>
+      <p className="t-eyebrow text-ink-3 max-lg:hidden">
         <Link to="/app/notes" className="hover:text-ink-2">บันทึก</Link>
         {'  ›  '}
         {editing ? 'แก้ไข' : 'สร้างใหม่'}
@@ -191,10 +197,10 @@ function NoteForm({ note }: { note?: Note }) {
               />
             </label>
             <div className="mt-2 flex items-center justify-between gap-4">
-              <p id="title-help" className={`t-note ${invalid ? 'text-error' : 'text-ink-3'}`}>
+              <p id="title-help" className={`t-note ${invalid ? 'text-error' : 'sr-only'}`}>
                 ชื่อบันทึกจำเป็น
               </p>
-              <p className="t-caption shrink-0 text-ink-3">
+              <p className="t-caption shrink-0 text-ink-3 max-lg:hidden">
                 {title.length} / {TITLE_MAX}
               </p>
             </div>
@@ -292,24 +298,18 @@ function NoteForm({ note }: { note?: Note }) {
                   className="wc-lift flex min-h-11 w-full items-center justify-center gap-2 rounded-control border border-dashed border-rule text-[13px] font-medium text-ink-2"
                 >
                   + เพิ่มเนื้อหา
-                  <span className="t-caption text-ink-3">หรือพิมพ์ / ในบล็อกว่าง</span>
                 </button>
               )}
             </div>
           </div>
 
           {/* Save bar — Figma 166:1483 */}
-          <div className="mt-7 flex flex-wrap items-center gap-4">
+          <div className="mt-7 flex flex-wrap items-center gap-4 max-lg:hidden">
             <div className="min-w-0">
               <p className="t-caption text-ink-3">
                 {stampedAt
                   ? `บันทึกร่างอัตโนมัติเมื่อ ${stampedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`
                   : 'ยังไม่ได้บันทึกร่าง'}
-              </p>
-              <p className="t-caption text-ink-3 mt-1">
-                {editing && note
-                  ? `เวอร์ชัน ${note.version} · ถ้ามีคนแก้ระหว่างนี้ ระบบจะถามก่อนทับ`
-                  : 'บันทึกใหม่จะเป็นเวอร์ชัน 1'}
               </p>
             </div>
             <div className="ml-auto flex gap-2">
@@ -331,15 +331,6 @@ function NoteForm({ note }: { note?: Note }) {
           </div>
         </div>
 
-        {/* Figma 166:1492 */}
-        <aside className="min-w-0">
-          <p className="t-label text-ink-3">สิ่งที่ระบบทำให้</p>
-          <div className="mt-3.5 space-y-3">
-            <SideNote title="ผูกกับงานได้หลายงาน" body="บันทึกหนึ่งอันใช้ซ้ำได้ ลบงานแล้วบันทึกไม่หายไปด้วย" />
-            <SideNote title="เก็บทุกเวอร์ชัน" body="ย้อนดูได้ว่าใครแก้อะไรเมื่อไหร่ ยกเว้นค่าที่ซ่อนไว้" />
-            <SideNote title="ตั้งวันทบทวน" body="ถึงกำหนดแล้วจะเตือนให้กลับมาตรวจว่ายังใช้ได้อยู่ไหม" />
-          </div>
-        </aside>
       </div>
       {settingUnlockCode && (
         <UnlockCodeDialog
@@ -469,15 +460,6 @@ function TagAdder({ onAdd }: { onAdd: (tag: string) => void }) {
   )
 }
 
-function SideNote({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-sheet border border-rule bg-sheet px-3 py-3">
-      <p className="text-[13px] font-medium">{title}</p>
-      <p className="t-note text-ink-3 mt-1.5">{body}</p>
-    </div>
-  )
-}
-
 /* ------------------------------------------------------------ block editor -- */
 
 function BlockEditor({ block, first, last, onChange, onMove, onDuplicate, onRemove, onSlash, onSecret }: {
@@ -571,8 +553,7 @@ function BlockEditor({ block, first, last, onChange, onMove, onDuplicate, onRemo
                 </label>
                 <Tool onClick={() => onChange({ ...block, steps: block.steps.filter((_, j) => j !== i) })} label={`ลบขั้นตอนที่ ${i + 1}`}>ลบ</Tool>
               </div>
-            ))}
-            <p className="t-note text-ink-3 mt-2.5">Enter ขึ้นบรรทัดใหม่ · / ในบรรทัดว่างเพื่อเปลี่ยนชนิดบล็อก</p>
+            ))}
           </>
         )}
 
@@ -665,10 +646,7 @@ function BlockEditor({ block, first, last, onChange, onMove, onDuplicate, onRemo
                     onChange={(v) => onChange({ ...block, fields: block.fields.map((x) => (x.id === f.id ? { ...x, value: v } : x)) })} />
                 )}
               </div>
-            ))}
-            <p className="t-note text-ink-3 mt-2.5">
-              ค่าถูกเข้ารหัสก่อนบันทึก ไม่เข้าดัชนีค้นหา ไม่อยู่ในประวัติเวอร์ชัน และไม่ถูกส่งทาง LINE
-            </p>
+            ))}
           </>
         )}
       </div>

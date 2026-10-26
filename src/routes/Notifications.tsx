@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { MobileBack } from '../components/mobile/MobileHeader'
+import { ListGroup } from '../components/mobile/SwipeRow'
 import { useNotifications } from '../lib/api'
 import { notificationLabel as LABEL, notificationTone as TONE } from '../lib/style'
 import { clock } from '../lib/time'
@@ -33,16 +36,26 @@ function NotificationsSkeleton() {
 
 export default function Notifications() {
   const { data, isPending } = useNotifications()
+  const [only, setOnly] = useState<'all' | 'failed' | 'retry'>('all')
   if (isPending) return <NotificationsSkeleton />
 
-  const items = [...(data ?? [])].sort((a, b) => b.at.localeCompare(a.at))
-  const count = (s: NotificationStatus[]) => items.filter((i) => s.includes(i.status)).length
+  const everything = [...(data ?? [])].sort((a, b) => b.at.localeCompare(a.at))
+  // The phone's chips narrow the list; the desktop shows every row and its tallies.
+  const items = only === 'failed' ? everything.filter((i) => i.status === 'FAILED_FINAL') : only === 'retry' ? everything.filter((i) => i.status === 'FAILED_RETRYABLE') : everything
+  const count = (s: NotificationStatus[]) => everything.filter((i) => s.includes(i.status)).length
 
   return (
     <>
-      <p className="t-caption text-ink-3">30 วันล่าสุด</p>
-      <h1 className="t-page-title mt-1">ประวัติแจ้งเตือน</h1>
-      <dl className="mt-[33px] flex flex-wrap gap-x-7 gap-y-3">
+      <MobileBack to="/app/dashboard" label="เมนู" />
+      <div className="max-lg:pb-4">
+      <p className="t-caption text-ink-3 max-lg:hidden">30 วันล่าสุด</p>
+      <h1 className="t-page-title mt-1 max-lg:px-4 max-lg:text-[32px]">การแจ้งเตือน</h1>
+      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pt-3 lg:hidden">
+        {([['all', `ทั้งหมด ${everything.length}`], ['failed', `ล้มเหลว ${count(['FAILED_FINAL'])}`], ['retry', `กำลังลองใหม่ ${count(['FAILED_RETRYABLE'])}`]] as const).map(([k, label]) => (
+          <button key={k} type="button" aria-pressed={only === k} onClick={() => setOnly(k)} className={`min-h-11 shrink-0 rounded-pill px-4 text-[15px] ${only === k ? 'bg-ink font-medium text-on-dark' : 'border border-rule bg-sheet text-ink-2'}`}>{label}</button>
+        ))}
+      </div>
+      <dl className="mt-[33px] hidden flex-wrap gap-x-7 gap-y-3 lg:flex">
         <Tally label="ส่งแล้ว" value={count(['SENT'])} tone="text-ink" />
         <Tally label="รอส่ง" value={count(['PENDING', 'PROCESSING'])} tone="text-ink-3" />
         <Tally label="กำลังลองใหม่" value={count(['FAILED_RETRYABLE'])} tone="text-time-soon" />
@@ -53,13 +66,9 @@ export default function Notifications() {
       {items.length === 0 ? (
         <div className="mt-6 rounded-sheet border border-rule bg-sheet px-7 py-11">
           <p className="t-section">ยังไม่มีการเตือนถูกส่ง</p>
-          <p className="t-body text-ink-2 mt-2 leading-relaxed">
-            จะมีรายการที่นี่เมื่อถึงเวลาเตือนงานสักงาน ถ้าตั้งกำหนดส่งไว้แล้วแต่ยังไม่มีอะไรขึ้นเลย
-            ให้ไปเช็คว่าเชื่อม LINE ครบหรือยัง
-          </p>
         </div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-sheet border border-rule bg-sheet">
+        <div className="mt-6 overflow-hidden rounded-sheet border border-rule bg-sheet max-lg:hidden">
           {/* The column heads of v2 423:2103. Desktop only: on a phone each row
               wraps into its own card and the heads would label nothing. */}
           <div className="hidden items-center gap-x-4 border-b border-rule px-5 py-2.5 text-[12px] text-ink-3 sm:flex">
@@ -72,12 +81,53 @@ export default function Notifications() {
           {items.map((n, i) => <Row key={n.id} n={n} last={i === items.length - 1} />)}
         </div>
       )}
-
-      <p className="t-meta text-ink-3 mt-4 leading-relaxed">
-        งานที่ปิดแล้วจะยกเลิกการเตือนที่ยังไม่ส่งอัตโนมัติ · ความล้มเหลวชั่วคราวลองใหม่ที่ 1, 5 และ 30 นาที
-        สูงสุด 3 ครั้ง · ความล้มเหลวถาวรจะไม่ลองใหม่ เพื่อไม่ให้เปลืองโควตา
-      </p>
+      {items.length > 0 && (
+        <div className="lg:hidden">
+          {groupByDay(items).map(([label, rows]) => (
+            <ListGroup key={label} label={label} count={rows.length}>
+              {rows.map((n) => <PhoneRow key={n.id} n={n} />)}
+            </ListGroup>
+          ))}
+        </div>
+      )}
+      </div>
     </>
+  )
+}
+
+/** Day headings for the phone list: วันนี้, เมื่อวาน, then the date. */
+function groupByDay(items: NotificationRecord[]): [string, NotificationRecord[]][] {
+  const key = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(d)
+  const now = new Date()
+  const groups = new Map<string, NotificationRecord[]>()
+  for (const n of items) {
+    const d = new Date(n.at)
+    const label = key(d) === key(now)
+      ? 'วันนี้'
+      : key(d) === key(new Date(now.getTime() - 86_400_000))
+        ? 'เมื่อวาน'
+        : new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' }).format(d)
+    groups.set(label, [...(groups.get(label) ?? []), n])
+  }
+  return [...groups.entries()]
+}
+
+/** Figma 471:1920: the time, the task and its reason, and the verdict on the right. */
+function PhoneRow({ n }: { n: NotificationRecord }) {
+  return (
+    <li className="flex gap-3 border-b border-rule-soft bg-sheet px-4 py-3">
+      <span className="w-[52px] shrink-0 pt-[3px] font-mono text-[13px] text-ink-3">{clock(n.at)}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[16px] leading-[1.35]">{n.taskTitle}</span>
+        <span className="mt-0.5 block text-[13px] leading-[1.4] text-ink-3">
+          {n.channel === 'IN_APP' ? 'ในแอป' : n.channel} · {n.reason}{n.errorCode ? ` · ${n.errorCode}` : ''}
+        </span>
+      </span>
+      <span className={`shrink-0 pt-0.5 text-[13px] ${TONE[n.status]} ${n.status === 'SENT' ? '' : 'font-medium'}`}>
+        {LABEL[n.status]}
+        {n.status === 'FAILED_RETRYABLE' && ` ${n.attempt}/${n.maxAttempts}`}
+      </span>
+    </li>
   )
 }
 

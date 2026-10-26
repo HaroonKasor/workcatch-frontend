@@ -300,10 +300,18 @@ function QuickAddSheet({
         {/* Grab handle. Mobile only — on a desktop dialog it would be a lie. */}
         <div className="mx-auto h-1 w-[38px] rounded-pill bg-rule sm:hidden" aria-hidden />
 
-        <h2 className="mt-5 font-display text-[20px] leading-[1.3] font-medium sm:mt-1">เพิ่มงาน</h2>
-        <p className="mt-1.5 text-[12px] text-ink-2">
-          พิมพ์ชื่องานแล้วกดเพิ่มได้เลย ใส่วันเวลาหรือ #โปรเจกต์ ในชื่อได้ด้วย
-        </p>
+        {/* Phone — Figma 463:728: งาน or บันทึก, chosen before typing. */}
+        <div className="mt-3 grid grid-cols-2 rounded-control bg-ground p-1 text-center text-[16px] sm:hidden">
+          <span className="rounded-[6px] bg-sheet py-2.5 font-medium" aria-current="true">งาน</span>
+          <button
+            type="button"
+            onClick={() => { close(); void navigate('/app/notes/new') }}
+            className="min-h-11 py-2.5 text-ink-2"
+          >
+            บันทึก
+          </button>
+        </div>
+        <h2 className="mt-1 hidden font-display text-[20px] leading-[1.3] font-medium sm:block">เพิ่มงาน</h2>
 
         <div className="relative mt-[18px]">
           <input
@@ -331,7 +339,7 @@ function QuickAddSheet({
             // Only once the person has moved into the list: before that nothing
             // is selected, and Enter adds the task rather than picking option 0.
             aria-activedescendant={listOpen && navigated ? `${listId}-${highlighted}` : undefined}
-            className={`h-[49px] w-full rounded-control border bg-ground px-3.5 text-[15px] placeholder:text-ink-3 ${
+            className={`h-[49px] w-full rounded-control border bg-ground px-3.5 text-[16px] placeholder:text-ink-3 sm:text-[15px] ${
               error ? 'border-error' : 'border-rule'
             }`}
           />
@@ -423,9 +431,7 @@ function QuickAddSheet({
         )}
         </div>
 
-        <p className="t-label mt-3.5 text-ink-3">ไม่บังคับ — แตะเพื่อเติมตอนนี้</p>
-
-        <div className="mt-2.5 flex flex-wrap gap-2">
+        <div className="mt-3.5 flex flex-wrap gap-2">
           {!shown.due && <Chip onClick={() => reveal('due')}>+ กำหนดส่ง</Chip>}
           {!shown.project && !chosen && <Chip onClick={() => reveal('project')}>+ โปรเจกต์</Chip>}
           {!shown.priority && <Chip onClick={() => reveal('priority')}>+ ความสำคัญ</Chip>}
@@ -440,7 +446,7 @@ function QuickAddSheet({
                   type="datetime-local"
                   value={dueAt}
                   onChange={(e) => setDueAt(e.target.value)}
-                  className="h-[33px] w-full rounded-control border border-rule bg-ground px-2.5 font-mono text-[12px]"
+                  className="h-[33px] w-full rounded-control border border-rule bg-ground px-2.5 font-mono text-[12px] max-sm:h-11 max-sm:text-[14px]"
                 />
               </Field>
             )}
@@ -453,7 +459,7 @@ function QuickAddSheet({
                       type="button"
                       onClick={() => setProjectId(projectId === p.id ? '' : p.id)}
                       aria-pressed={projectId === p.id}
-                      className={`wc-lift flex items-center gap-2 rounded-control border px-3 py-1.5 text-[12px] ${
+                      className={`wc-lift flex items-center gap-2 rounded-control border px-3 py-1.5 text-[12px] max-sm:min-h-11 max-sm:text-[14px] ${
                         projectId === p.id ? 'border-ink bg-ink/[0.04] font-medium' : 'border-rule'
                       }`}
                     >
@@ -473,7 +479,7 @@ function QuickAddSheet({
                       type="button"
                       onClick={() => setPriority(priority === p.value ? '' : p.value)}
                       aria-pressed={priority === p.value}
-                      className={`wc-lift rounded-control border px-3 py-1.5 text-[12px] ${
+                      className={`wc-lift rounded-control border px-3 py-1.5 text-[12px] max-sm:min-h-11 max-sm:text-[14px] ${
                         priority === p.value ? 'border-ink bg-ink/[0.04] font-medium' : 'border-rule'
                       }`}
                     >
@@ -489,7 +495,7 @@ function QuickAddSheet({
                   value={requester}
                   onChange={(e) => setRequester(e.target.value)}
                   placeholder="เช่น คุณมานพ"
-                  className="h-[33px] w-full rounded-control border border-rule bg-ground px-2.5 text-[12.5px] placeholder:text-ink-3"
+                  className="h-[33px] w-full rounded-control border border-rule bg-ground px-2.5 text-[12.5px] placeholder:text-ink-3 max-sm:h-11 max-sm:text-[14px]"
                 />
               </Field>
             )}
@@ -504,18 +510,10 @@ function QuickAddSheet({
           {busy ? 'กำลังเพิ่ม…' : effectiveDue || effectiveProject ? 'เพิ่มงาน' : 'เพิ่มเข้ากล่องรับงาน'}
         </button>
 
-        <p className="mt-3 text-[12px] leading-[1.45] text-ink-3">
-          {effectiveDue
-            ? 'ระบบจะเตือนผ่าน LINE ก่อนถึงกำหนด ตามที่ตั้งไว้ในหน้าตั้งค่า'
-            : effectiveProject
-              ? 'งานจะอยู่ในโปรเจกต์นี้ ใส่กำหนดส่งเมื่อพร้อม'
-              : 'งานใหม่จะอยู่ในกล่องรับงาน ถ้าค้างเกิน 24 ชั่วโมง ระบบจะสรุปส่งทาง LINE วันละครั้งตอน 09:00'}
-        </p>
-
         <button
           type="button"
           onClick={close}
-          className="wc-lift mt-2 h-9 w-full rounded-control text-[12.5px] text-ink-2"
+          className="wc-lift mt-2 hidden h-9 w-full rounded-control text-[12.5px] text-ink-2 sm:block"
         >
           ยกเลิก
         </button>
@@ -570,7 +568,7 @@ function Chip({ onClick, children }: { onClick: () => void; children: React.Reac
     <button
       type="button"
       onClick={onClick}
-      className="wc-lift h-[33px] rounded-control border border-rule px-3 text-[12px] text-ink-2"
+      className="wc-lift h-11 rounded-control border border-rule px-3 text-[14px] text-ink-2 sm:h-[33px] sm:text-[12px]"
     >
       {children}
     </button>

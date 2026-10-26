@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { SkeletonPageHeader, SkeletonRows, SkeletonScreen } from '../../components/Skeleton'
 import { useAdminAudit } from '../../lib/api'
+import { LIST, PageTitle, Pills } from './ui'
 /**
- * /admin/audit-logs — Figma node 54:979
+ * /admin/audit-logs — Figma 54:979 (desktop), 479:2864 (phone), 492:4526 (iPad)
  *
  * The interesting columns are the action and detail. The audit endpoint records
  * accounting facts, not a fabricated reason a server never stored.
@@ -17,6 +18,8 @@ const MATCH: Record<string, (action: string) => boolean> = {
   'แก้ค่าระบบ': (action) => action === 'SETTING_CHANGED',
   'ส่งข้อความใหม่': (action) => action === 'NOTIFICATION_RETRIED',
 }
+
+const FILTERS = Object.keys(MATCH).map((key) => ({ key, label: key }))
 
 const ACTION_LABELS: Record<string, string> = {
   USER_SUSPENDED: 'ระงับบัญชีผู้ใช้',
@@ -38,74 +41,59 @@ export default function AdminAuditLogs() {
 
   return (
     <>
-      <p className="t-caption text-ink-3">โหมดผู้ดูแลระบบ</p>
-      <h1 className="t-page-title mt-1">ประวัติผู้ดูแล</h1>
-      <p className="t-body mt-2 text-ink-2">บันทึกทุกการกระทำสำคัญ ลบไม่ได้และแก้ไม่ได้</p>
+      <PageTitle>ประวัติผู้ดูแล</PageTitle>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {Object.keys(MATCH).map((f) => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setActive(f)}
-            aria-pressed={active === f}
-            className={`rounded-pill px-3.5 py-1.5 text-[12px] ${
-              active === f ? 'bg-ink font-medium text-on-dark' : 'border border-rule bg-sheet text-ink-2'
-            }`}
-          >
-            {f}
-          </button>
-        ))}
+      <div className="min-[900px]:mt-4">
+        <Pills items={FILTERS} value={active} onChange={setActive} />
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-sheet border border-rule bg-sheet">
-        <table className="w-full min-w-[900px] text-left">
+      {/* Under 900px: one entry per action. */}
+      <ul className={`${LIST} min-[900px]:hidden`}>
+        {rows.map((e, i) => (
+          <li key={e.id} className={`px-4 py-3 ${i < rows.length - 1 ? 'border-b border-rule-soft' : ''}`}>
+            <p className="text-[15px] font-medium">{ACTION_LABELS[e.action] ?? e.action}</p>
+            <p className="mt-0.5 text-[13px] text-ink-3">{stamp(e.at)} · {e.actorName ?? 'ไม่ทราบชื่อผู้ดูแล'}</p>
+            <p className="mt-0.5 font-mono text-[13px] text-ink-2">{e.target}</p>
+            {e.detail && <p className="mt-0.5 text-[13px] text-ink-2">“{e.detail}”</p>}
+          </li>
+        ))}
+      </ul>
+
+      {/* From 900px: a table. */}
+      <div className={`${LIST} hidden min-[900px]:block`}>
+        <table className="w-full text-left">
           <thead>
             <tr className="border-b border-rule">
               <Th>เวลา</Th>
-              <Th>ผู้ดูแล</Th>
-              <Th>การกระทำและเป้าหมาย</Th>
+              <Th>การกระทำ</Th>
+              <Th>เป้าหมาย</Th>
               <Th>รายละเอียด</Th>
             </tr>
           </thead>
           <tbody>
             {rows.map((e, i) => (
               <tr key={e.id} className={i < rows.length - 1 ? 'border-b border-rule-soft' : ''}>
-                <td className="t-caption w-28 px-5 py-3.5 align-top text-ink-3">{stamp(e.at)}</td>
-                <td className="w-28 px-5 py-3.5 align-top text-[12px] text-ink-2">
-                  {e.actorName ?? 'ไม่ทราบชื่อผู้ดูแล'}
+                <td className="w-36 px-4 py-3 align-top text-[13px] text-ink-3">{stamp(e.at)}</td>
+                <td className="px-4 py-3 align-top">
+                  <span className="block text-[13px] font-medium">{ACTION_LABELS[e.action] ?? e.action}</span>
+                  <span className="block text-[13px] text-ink-3">{e.actorName ?? 'ไม่ทราบชื่อผู้ดูแล'}</span>
                 </td>
-                <td className="px-5 py-3.5 align-top">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-[12.5px] font-medium">{ACTION_LABELS[e.action] ?? e.action}</span>
-                  </span>
-                  <span className="t-caption mt-1 block text-ink-3">{e.target}</span>
-                </td>
-                <td className="max-w-[260px] px-5 py-3.5 align-top text-[12px] leading-relaxed text-ink-2">
-                  {e.detail ?? '—'}
-                </td>
+                <td className="px-4 py-3 align-top font-mono text-[13px] text-ink-2">{e.target}</td>
+                <td className="px-4 py-3 align-top text-[13px] text-ink-2">{e.detail ?? '—'}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && (
-          <p className="px-5 py-6 text-[12.5px] text-ink-3">ไม่มีรายการในตัวกรองนี้</p>
-        )}
       </div>
-
-      <div className="mt-4 rounded-sheet border border-rule px-5 py-4">
-        <p className="t-label text-ink-3">สิ่งที่บันทึกและไม่บันทึก</p>
-        <p className="t-meta mt-1.5 leading-relaxed text-ink-2">
-          บันทึก: ผู้ดำเนินการ เวลา การกระทำ เป้าหมาย และรายละเอียด ·
-          ไม่บันทึก: access token, channel secret, รหัสผ่าน หรือเนื้อหางานของผู้ใช้
-        </p>
-      </div>
+      {rows.length === 0 && (
+        <p className={`${LIST} mt-4 px-4 py-5 text-[14px] text-ink-3`}>ไม่มีรายการในตัวกรองนี้</p>
+      )}
     </>
   )
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th scope="col" className="t-label px-5 py-2.5 font-medium text-ink-3">{children}</th>
+  return <th scope="col" className="t-label px-4 py-2.5 font-medium text-ink-3">{children}</th>
 }
 
 function stamp(value: string) {
@@ -118,7 +106,7 @@ function AuditSkeleton() {
   return (
     <SkeletonScreen label="กำลังโหลดประวัติผู้ดูแล">
       <SkeletonPageHeader />
-      <SkeletonRows rows={6} className="mt-6" />
+      <SkeletonRows rows={6} className="mt-4" />
     </SkeletonScreen>
   )
 }

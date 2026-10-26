@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { AdminRail } from './AdminRail'
+import { AdminPageSwitcher, AdminRail, AdminRailCompact, AdminTopBar } from './AdminRail'
 import { ToastProvider } from './Toast'
 import { useMe } from '../lib/api'
 
@@ -30,12 +30,17 @@ export default function AdminLayout() {
 
   return (
     <ToastProvider>
-      <div className="wc-scale min-h-viewport flex bg-ground">
-        <div className="hidden lg:block">
+      <div className="wc-scale min-h-viewport flex flex-col bg-ground min-[900px]:flex-row">
+        <AdminTopBar />
+        <div className="hidden min-[900px]:block xl:hidden">
+          <AdminRailCompact />
+        </div>
+        <div className="hidden xl:block">
           <AdminRail />
         </div>
         <main className="min-w-0 flex-1">
-          <div className="mx-auto max-w-content px-5 py-8 lg:px-10">
+          <AdminPageSwitcher />
+          <div className="mx-auto max-w-content pb-8 min-[900px]:px-6 min-[900px]:py-6 xl:px-10 xl:py-8">
             <Outlet />
           </div>
         </main>

@@ -60,7 +60,7 @@ export const tasks: Task[] = [
   {
     id: 't6', title: 'สรุปรายงานยอดขาย Q3 ส่งหัวหน้าฝ่าย', status: 'IN_PROGRESS', priority: 'URGENT',
     dueAt: h(8), project: monthly, requester: 'คุณสมชาย', source: 'LINE',
-    description: 'รวมยอดขายรายภูมิภาคของไตรมาส 3 เทียบกับเป้า แล้วสรุปสาเหตุที่ภาคเหนือต่ำกว่าเป้า 12% ส่งเป็นไฟล์ PDF พร้อมสไลด์สรุป 3 หน้า',
+    description: 'รวมยอดขายรายภูมิภาคของไตรมาส 3 เทียบกับเป้า แล้วสรุปสาเหตุที่ภาคเหนือต่ำกว่าเป้า 12% ส่งเป็นไฟล์ PDF พร้อมสไลด์สรุป 3 หน้า ใช้เทมเพลตจาก https://docs.google.com/q3-template',
     createdAt: d(-2),
     // A LINE draft the parser was sure about, so nothing asks about it.
     parseConfidence: 0.94,
@@ -70,12 +70,16 @@ export const tasks: Task[] = [
       { id: 's3', text: 'เขียนสรุปสาเหตุภาคเหนือต่ำกว่าเป้า', done: false },
       { id: 's4', text: 'ทำสไลด์ 3 หน้าและส่งให้คุณสมชาย', done: false },
     ],
+    links: [
+      { id: 'l1', url: 'https://www.figma.com/file/8Kd2Q3sales', host: 'www.figma.com', title: 'ไฟล์ Figma — สไลด์สรุปยอดขาย Q3', createdAt: h(-5) },
+      { id: 'l2', url: 'https://drive.google.com/drive/folders/q3-sales', host: 'drive.google.com', title: null, createdAt: d(-1) },
+    ],
     // One of each verdict the server can return, because the point of the list
     // is that a file is not downloadable until the scan says so — 147:1333.
     attachments: [
       { id: 'a1', name: 'ยอดขาย-Q3-รายภูมิภาค.xlsx', size: '842 KB', kind: 'XLSX', scan: 'CLEAN', at: h(-19) },
       { id: 'a2', name: 'สรุปประชุมฝ่ายขาย-5กย.pdf', size: '1.2 MB', kind: 'PDF', scan: 'CLEAN', at: d(-1) },
-      { id: 'a3', name: 'กราฟเทียบเป้า.png', size: '318 KB', kind: 'PNG', scan: 'SCANNING', at: h(-1) },
+      { id: 'a3', name: 'กราฟเทียบเป้า.png', size: '318 KB', kind: 'PNG', contentType: 'image/png', scan: 'SCANNING', at: h(-1) },
       { id: 'a4', name: 'แบบฟอร์ม.docx', size: '340 KB', kind: 'DOCX', scan: 'INFECTED', at: d(-1) },
       { id: 'a5', name: 'วิดีโอสอนงาน.mp4', size: '48 MB', kind: 'MP4', scan: 'TOO_LARGE', at: d(-1) },
     ],

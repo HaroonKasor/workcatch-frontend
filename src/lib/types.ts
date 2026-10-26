@@ -59,6 +59,10 @@ export interface TaskAttachment {
   scan: FileScan
   /** UTC instant the file was attached. */
   at: string
+  /** The type the server detected from the bytes. Decides whether a thumbnail is offered. */
+  contentType?: string
+  /** CLEAN and its task live: the download endpoint will answer. */
+  downloadable?: boolean
 }
 
 /**
@@ -92,6 +96,15 @@ export interface ParseCandidate {
   dueAt: string
 }
 
+/** A link pasted onto a task — backend/docs/links-api.md. `host` is the server's punycode form. */
+export interface TaskLink {
+  id: string
+  url: string
+  host: string
+  title?: string | null
+  createdAt: string
+}
+
 export interface Task {
   id: string
   title: string
@@ -112,6 +125,8 @@ export interface Task {
   subtasks?: Subtask[]
   /** "ไฟล์แนบ". */
   attachments?: TaskAttachment[]
+  /** "ลิงก์", newest first. */
+  links?: TaskLink[]
   /** "การเตือน" — what has been sent for this task and what is still queued. */
   reminders?: TaskReminder[]
   /**

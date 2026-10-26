@@ -62,7 +62,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         // screen reader is in the middle of saying.
         role="status"
         aria-live="polite"
-        className="pointer-events-none fixed bottom-5 left-5 z-50 flex w-[min(396px,calc(100vw-40px))] flex-col gap-2 max-lg:bottom-[76px]"
+        className="pointer-events-none fixed bottom-5 left-5 z-50 flex w-[min(396px,calc(100vw-40px))] flex-col gap-2 max-lg:bottom-[88px] max-lg:left-4"
       >
         {toasts.map((t) => (
           <ToastCard key={t.id} toast={t} onDone={() => dismiss(t.id)} />
@@ -88,7 +88,7 @@ function ToastCard({ toast, onDone }: { toast: Toast; onDone: () => void }) {
       onMouseLeave={() => setHeld(false)}
       onFocusCapture={() => setHeld(true)}
       onBlurCapture={() => setHeld(false)}
-      className={`pointer-events-auto flex items-center gap-3 rounded-control border bg-sheet py-3.5 pr-[18px] pl-[18px] shadow-[0_1px_2px_rgba(23,23,23,0.06),0_8px_24px_rgba(23,23,23,0.10)] ${
+      className={`pointer-events-auto flex items-center gap-3 rounded-control border bg-sheet max-lg:!border-ink max-lg:!bg-ink max-lg:text-on-dark py-3.5 pr-[18px] pl-[18px] shadow-[0_1px_2px_rgba(23,23,23,0.06),0_8px_24px_rgba(23,23,23,0.10)] ${
         toast.tone === 'error'
           ? 'border-error/40'
           : toast.tone === 'success'
@@ -99,7 +99,7 @@ function ToastCard({ toast, onDone }: { toast: Toast; onDone: () => void }) {
       <div className="min-w-0 flex-1">
         <p
           className={`text-[13px] font-medium ${
-            toast.tone === 'error' ? 'text-error' : toast.tone === 'success' ? 'text-brand-strong' : ''
+            toast.tone === 'error' ? 'text-error max-lg:text-on-dark' : toast.tone === 'success' ? 'text-brand-strong max-lg:text-on-dark' : ''
           }`}
         >
           {/* The tone is said in a word as well as drawn in a colour. A reader
@@ -108,7 +108,7 @@ function ToastCard({ toast, onDone }: { toast: Toast; onDone: () => void }) {
           {toast.tone === 'success' && <span className="t-label mr-2">สำเร็จ</span>}
           {toast.title}
         </p>
-        {toast.body && <p className="mt-0.5 truncate text-[12px] text-ink-2">{toast.body}</p>}
+        {toast.body && <p className="mt-0.5 line-clamp-3 text-[12px] leading-relaxed text-ink-2 max-lg:text-[13px] max-lg:text-on-dark/70">{toast.body}</p>}
       </div>
       {toast.action && (
         <button
@@ -117,7 +117,7 @@ function ToastCard({ toast, onDone }: { toast: Toast; onDone: () => void }) {
             toast.action!.onAct()
             onDone()
           }}
-          className="wc-lift h-8 shrink-0 rounded-[6px] border border-rule px-3 text-[12px] font-medium"
+          className="wc-lift h-11 shrink-0 rounded-[6px] border border-rule px-3 text-[13px] font-medium max-lg:border-0 max-lg:text-brand-on-dark lg:h-8 lg:text-[12px]"
         >
           {toast.action.label}
         </button>

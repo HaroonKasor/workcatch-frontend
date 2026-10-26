@@ -70,7 +70,6 @@ export function ProjectSettings({ project }: { project: Project }) {
           </span>
         </label>
         {error && <p className="mt-1.5 text-[12px] text-error">{error}</p>}
-        <p className="t-meta mt-2 text-ink-3">เปลี่ยนแล้วชื่อใหม่จะขึ้นกับงานทุกงานในโปรเจกต์นี้ทันที</p>
       </form>
 
       <div className="border-b border-rule-soft px-5 py-4">

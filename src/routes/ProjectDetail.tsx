@@ -6,9 +6,12 @@ import { Skeleton as Block, SkeletonRows, SkeletonScreen } from '../components/S
 import { TaskRow } from '../components/TaskRow'
 import { useToast } from '../components/Toast'
 import { useDeleteProject, useLineStatus, useNotes, useProjects, useRestoreProject, useTasks } from '../lib/api'
-import { noteCategoryLabel, projectDot } from '../lib/style'
-import { byUrgency, stamp } from '../lib/time'
+import { noteCategoryLabel, projectDot, statusLabel } from '../lib/style'
+import { byUrgency } from '../lib/time'
 import type { Note } from '../lib/types'
+import { ListGroup, TaskSwipeRow } from '../components/mobile/SwipeRow'
+import { useRowActions } from '../components/mobile/useRowActions'
+import { MobileBack } from '../components/mobile/MobileHeader'
 import { useNow } from '../lib/useNow'
 
 /**
@@ -32,6 +35,7 @@ export default function ProjectDetail() {
   const toast = useToast()
   const now = useNow()
   const [tab, setTab] = useState<Tab>('tasks')
+  const rowActions = useRowActions()
   const [confirming, setConfirming] = useState(false)
 
   if (projects.isPending || tasks.isPending) {
@@ -50,7 +54,6 @@ export default function ProjectDetail() {
     return (
       <div className="rounded-sheet border border-rule bg-sheet px-7 py-11">
         <p className="t-section">ไม่พบโปรเจกต์นี้</p>
-        <p className="t-body mt-2 text-ink-2">อาจถูกลบไปแล้ว — โปรเจกต์ที่ลบกู้คืนได้ภายใน 30 วันจากหน้าโปรเจกต์</p>
         <Link to="/app/projects" className="wc-lift mt-5 inline-flex min-h-11 items-center rounded-control border border-rule px-4 text-[13px] font-medium">
           ไปที่หน้าโปรเจกต์
         </Link>
@@ -62,12 +65,12 @@ export default function ProjectDetail() {
   const open = mine.filter((t) => t.status !== 'DONE').sort((a, b) => byUrgency(a, b, now))
   const done = mine.filter((t) => t.status === 'DONE')
   const related = (notes.data ?? []).filter((n) => n.projectId === project.id)
-  const lastEdit = [...mine.map((t) => t.createdAt)].sort().at(-1)
   const progress = mine.length > 0 ? (done.length / mine.length) * 100 : 0
 
   return (
     <>
-      <nav aria-label="breadcrumb" className="text-[12px] text-ink-3">
+      <div className="-mx-5 lg:hidden"><MobileBack to="/app/projects" label="โปรเจกต์" /></div>
+      <nav aria-label="breadcrumb" className="text-[12px] text-ink-3 max-lg:hidden">
         <Link to="/app/projects" className="hover:underline">โปรเจกต์</Link>
         <span aria-hidden>  ›  </span>
         <span>{project.name}</span>
@@ -77,18 +80,16 @@ export default function ProjectDetail() {
         <span className="min-w-0 break-words">{project.name}</span>
         {project.archivedAt && <span className="t-caption shrink-0 text-ink-3">เก็บเข้าคลัง</span>}
       </h1>
-      <p className="mt-2 text-[12px] text-ink-2">
-        {mine.length} งาน · ค้างอยู่ {open.length}{lastEdit ? ` · แก้ล่าสุด ${stamp(lastEdit).replace(/ \d{2}:\d{2}$/, '')}` : ''}
-      </p>
 
       <div className="mt-8 grid gap-10 xl:grid-cols-[minmax(0,744px)_344px] xl:justify-between">
         <div className="min-w-0">
           <div className="h-1.5 w-full rounded-[3px] bg-rule-soft" role="progressbar" aria-valuenow={done.length} aria-valuemin={0} aria-valuemax={mine.length} aria-label="ความคืบหน้า">
             <div className="h-full rounded-[3px] bg-brand" style={{ width: `${progress}%` }} />
           </div>
-          <p className="mt-1.5 text-[12px] text-ink-3">เสร็จแล้ว {done.length} จาก {mine.length}</p>
+          <p className="mt-1.5 text-[12px] text-ink-3 max-lg:hidden">เสร็จแล้ว {done.length} จาก {mine.length}</p>
+          <p className="mt-1.5 text-right font-mono text-[14px] text-ink-3 lg:hidden">{done.length}/{mine.length}</p>
 
-          <div role="tablist" aria-label="ส่วนของโปรเจกต์" className="mt-8 flex gap-7 border-b border-rule-soft">
+          <div role="tablist" aria-label="ส่วนของโปรเจกต์" className="mt-8 flex gap-7 border-b border-rule-soft max-lg:mt-4 max-lg:grid max-lg:grid-cols-3 max-lg:gap-0 max-lg:rounded-control max-lg:border-0 max-lg:bg-ground max-lg:p-1">
             {([['tasks', 'งานในโปรเจกต์'], ['notes', 'บันทึกที่เกี่ยวข้อง'], ['settings', 'ตั้งค่าโปรเจกต์']] as const).map(([key, label]) => (
               <button
                 key={key}
@@ -96,23 +97,37 @@ export default function ProjectDetail() {
                 role="tab"
                 aria-selected={tab === key}
                 onClick={() => setTab(key)}
-                className={`-mb-px min-h-11 border-b-2 pt-1.5 pb-2.5 text-[12.5px] ${
-                  tab === key ? 'border-ink font-semibold text-ink' : 'border-transparent font-medium text-ink-3 hover:text-ink-2'
+                className={`-mb-px min-h-11 border-b-2 pt-1.5 pb-2.5 text-[12.5px] max-lg:mb-0 max-lg:rounded-[6px] max-lg:border-0 max-lg:py-2 max-lg:text-[15px] ${
+                  tab === key ? 'border-ink font-semibold text-ink max-lg:bg-sheet' : 'border-transparent font-medium text-ink-3 hover:text-ink-2'
                 }`}
               >
-                {label}
+                <span className="lg:hidden">{key === 'tasks' ? 'งาน' : key === 'notes' ? 'บันทึก' : 'ตั้งค่า'}</span>
+                <span className="max-lg:hidden">{label}</span>
               </button>
             ))}
           </div>
 
           <div role="tabpanel" className="mt-4">
             {tab === 'tasks' && (
+              <div className="-mx-5 -mt-4 lg:hidden">
+                <ListGroup label="ค้างอยู่" count={open.length}>
+                  {open.map((t) => <TaskSwipeRow key={t.id} task={t} now={now} actions={rowActions} meta={[statusLabel[t.status], t.requester].filter(Boolean).join(' · ')} />)}
+                </ListGroup>
+                {done.length > 0 && (
+                  <ListGroup label="เสร็จแล้ว" count={done.length}>
+                    {done.map((t) => <TaskSwipeRow key={t.id} task={t} now={now} actions={rowActions} done swipe={false} meta={statusLabel[t.status]} />)}
+                  </ListGroup>
+                )}
+                {rowActions.sheet}
+              </div>
+            )}
+            {tab === 'tasks' && (
               open.length === 0 ? (
-                <p className="rounded-sheet border border-rule-soft bg-sheet px-5 py-6 text-[13px] text-ink-3">
+                <p className="rounded-sheet border border-rule-soft bg-sheet px-5 py-6 text-[13px] text-ink-3 max-lg:hidden">
                   ไม่มีงานค้างในโปรเจกต์นี้{done.length > 0 ? ` · เสร็จแล้ว ${done.length} งาน` : ''}
                 </p>
               ) : (
-                <div className="@container overflow-hidden rounded-sheet border border-rule-soft bg-sheet">
+                <div className="@container overflow-hidden rounded-sheet border border-rule-soft bg-sheet max-lg:hidden">
                   {open.map((t, i) => <TaskRow key={t.id} task={t} now={now} last={i === open.length - 1} />)}
                 </div>
               )
@@ -127,7 +142,6 @@ export default function ProjectDetail() {
           <div className="mt-2.5">
             <NotesList notes={related.slice(0, 3)} compact />
           </div>
-          <p className="mt-2.5 text-[12px] text-ink-3">ลบโปรเจกต์แล้วบันทึกจะถูกยกเลิกการเชื่อม แต่ไม่ถูกลบ</p>
 
           <p className="mt-6 text-[12px] font-medium text-ink-3">การเตือนของโปรเจกต์นี้</p>
           <div className="mt-2.5 flex flex-col gap-2 rounded-sheet border border-rule-soft bg-sheet p-4 text-[12.5px] text-ink-2">

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { Skeleton, SkeletonPageHeader, SkeletonScreen } from '../../components/Skeleton'
+import { LIST, ListLabel, PageTitle } from './ui'
 import { useToast } from '../../components/Toast'
 import {
   type AdminSetting,
@@ -12,7 +13,7 @@ import {
 } from '../../lib/api'
 
 /**
- * /admin/settings — Figma node 53:957
+ * /admin/settings — Figma 53:957 (desktop), 479:2738 (phone), 492:4606 (iPad)
  *
  * The message preview is the part that earns its place. The reason is practical: Thai text
  * wraps differently from English, and LINE only shows the first line in a phone
@@ -35,6 +36,8 @@ const FLAG_META: Record<string, { name: string; why: string }> = {
   secrets_enabled: { name: 'เปิดใช้ข้อมูลเข้าสู่ระบบแบบซ่อนค่า', why: 'อนุญาตให้ใช้ข้อมูลเข้าสู่ระบบที่เข้ารหัสไว้' },
   billing_enabled: { name: 'เปิดหน้าอัปเกรดให้กดได้จริง', why: 'ผู้ใช้กดปุ่มอัปเกรดได้ แต่ยังไม่มีระบบชำระเงินจริง' },
 }
+
+const FLAG_NAMES: Record<string, string> = Object.fromEntries(Object.entries(FLAG_META).map(([k, v]) => [k, v.name]))
 
 export default function AdminSettings() {
   const toast = useToast()
@@ -66,64 +69,30 @@ export default function AdminSettings() {
 
   return (
     <>
-      <p className="t-caption text-ink-3">โหมดผู้ดูแลระบบ</p>
-      <h1 className="t-page-title mt-1">ตั้งค่าระบบ</h1>
-      <p className="t-body mt-2 text-ink-2">
-        ค่าเหล่านี้อ่านจากการตั้งค่าระบบจริงและแม่แบบข้อความที่ระบบใช้ส่ง
-      </p>
+      <PageTitle>ตั้งค่าระบบ</PageTitle>
       {(settings.isError || config.isError || templates.isError) && (
-        <p role="alert" className="mt-4 rounded-control border border-error px-4 py-3 text-[12px] text-error">
+        <p role="alert" className="mx-4 mb-3 rounded-control border border-error px-4 py-3 text-[13px] text-error min-[900px]:mx-0 min-[900px]:mt-4">
           โหลดการตั้งค่าระบบบางส่วนไม่สำเร็จ
         </p>
       )}
 
-      <div className="mt-7 grid gap-8 xl:grid-cols-[1fr_344px]">
-        <div className="min-w-0 space-y-8">
+      <div className="grid min-[900px]:mt-4 min-[900px]:grid-cols-2 min-[900px]:items-start min-[900px]:gap-6">
+        <div className="min-w-0">
           <Section title="ค่าเริ่มต้นของระบบ">
-            <p className="t-meta border-b border-rule-soft px-5 py-3 text-ink-3">
-              ค่าเหล่านี้กำหนดในโค้ด เปลี่ยนได้ด้วยการ deploy
-            </p>
             {config.isPending && <Skeleton w="100%" h="144px" />}
             {defaults.map(([k, v], i) => (
               <div
                 key={k}
-                className={`flex items-center justify-between gap-4 px-5 py-3 ${
+                className={`flex min-h-[52px] items-center justify-between gap-4 px-4 py-2 ${
                   i < defaults.length - 1 ? 'border-b border-rule-soft' : ''
                 }`}
               >
-                <span className="text-[13px] text-ink-2">{k}</span>
-                <span className="font-mono text-[12px]">{v}</span>
+                <span className="text-[15px] min-[900px]:text-[14px]">{k}</span>
+                <span className="text-right font-mono text-[13px] text-ink-2">{v}</span>
               </div>
             ))}
             {!config.data && !config.isPending && (
-              <p className="px-5 py-5 text-[12.5px] text-ink-3">ไม่มีข้อมูลค่าเริ่มต้น</p>
-            )}
-          </Section>
-
-          <Section title="แม่แบบข้อความ" note="ตัวอย่างจากตัวประกอบข้อความจริง">
-            {templates.isPending && <Skeleton w="100%" h="144px" />}
-            {(templates.data ?? []).map((t, i) => (
-              <div
-                key={t.code}
-                className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 ${
-                  i < (templates.data?.length ?? 0) - 1 ? 'border-b border-rule-soft' : ''
-                } ${(previewing || current?.code) === t.code ? 'bg-ink/[0.03]' : ''}`}
-              >
-                <span title={t.code} className="t-caption w-44 shrink-0 truncate text-ink-2">{t.code}</span>
-                <span className="min-w-0 flex-1 text-[12.5px]">{t.description}</span>
-                <span className="t-caption shrink-0 text-ink-3">LINE</span>
-                <button
-                  type="button"
-                  onClick={() => showPreview(t.code)}
-                  aria-pressed={(previewing || current?.code) === t.code}
-                  className="shrink-0 rounded-control border border-rule px-2.5 py-1.5 text-[12px] font-medium"
-                >
-                  ดูตัวอย่าง
-                </button>
-              </div>
-            ))}
-            {templates.data?.length === 0 && (
-              <p className="px-5 py-5 text-[12.5px] text-ink-3">ไม่มีแม่แบบข้อความ</p>
+              <p className="px-4 py-5 text-[14px] text-ink-3">ไม่มีข้อมูลค่าเริ่มต้น</p>
             )}
           </Section>
 
@@ -132,59 +101,80 @@ export default function AdminSettings() {
             {flags.map((f, i) => (
               <div
                 key={f.key}
-                className={`flex items-center justify-between gap-4 px-5 py-3.5 ${
+                className={`flex min-h-[52px] items-center justify-between gap-4 px-4 py-2 ${
                   i < flags.length - 1 ? 'border-b border-rule-soft' : ''
                 }`}
               >
-                <span className="min-w-0">
-                  <span className="block text-[13px] text-ink-2">{FLAG_META[f.key].name}</span>
-                  <span className="t-meta block text-ink-3">{FLAG_META[f.key].why}</span>
-                </span>
+                <span className="text-[15px] min-[900px]:text-[14px]">{FLAG_NAMES[f.key]}</span>
                 <Switch
                   on={f.value === 'true'}
-                  label={FLAG_META[f.key].name}
+                  label={FLAG_NAMES[f.key]}
                   onChange={() => setConfirming(f)}
                 />
               </div>
             ))}
             {flags.length === 0 && !settings.isPending && (
-              <p className="px-5 py-5 text-[12.5px] text-ink-3">ไม่มีสวิตช์ที่ตั้งค่าได้</p>
+              <p className="px-4 py-5 text-[14px] text-ink-3">ไม่มีสวิตช์ที่ตั้งค่าได้</p>
             )}
           </Section>
         </div>
 
-        <aside ref={previewRef} className="min-w-0 space-y-4 xl:sticky xl:top-8 xl:self-start">
-          <header className="flex items-center justify-between">
-            <h2 className="t-section">ตัวอย่างข้อความ</h2>
-            <span className="t-caption text-ink-3">{current?.code ?? 'ยังไม่มีแม่แบบ'}</span>
-          </header>
+        <div className="min-w-0">
+          <Section title={`แม่แบบข้อความ ${templates.data?.length ?? ''}`}>
+            {templates.isPending && <Skeleton w="100%" h="144px" />}
+            {(templates.data ?? []).map((t, i) => (
+              <div
+                key={t.code}
+                className={`flex min-h-[52px] items-center gap-3 px-4 py-1 ${
+                  i < (templates.data?.length ?? 0) - 1 ? 'border-b border-rule-soft' : ''
+                } ${(previewing || current?.code) === t.code ? 'bg-ink/[0.03]' : ''}`}
+              >
+                <span className="min-w-0 flex-1">
+                  <span title={t.description} className="block truncate font-mono text-[13px]">{t.code}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => showPreview(t.code)}
+                  aria-pressed={(previewing || current?.code) === t.code}
+                  className="min-h-11 shrink-0 rounded-control border border-rule bg-sheet px-3 text-[13px] font-medium"
+                >
+                  ดูตัวอย่าง
+                </button>
+              </div>
+            ))}
+            {templates.data?.length === 0 && (
+              <p className="px-4 py-5 text-[14px] text-ink-3">ไม่มีแม่แบบข้อความ</p>
+            )}
+          </Section>
 
-          {/* A mock LINE chat. The bubble uses a chat radius rather than the app's
-              own 2px sheet radius, because it is simulating someone else's UI. */}
-          <div className="rounded-sheet border border-rule p-4" style={{ background: '#93A9B8' }}>
-            <div className="flex items-start gap-2">
-              <span className="size-7 shrink-0 rounded-full bg-ink" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="text-[12px] text-white/90">WorkCatch</p>
-                <div className="mt-1 rounded-[12px] bg-white px-3.5 py-3">
-                  <p className="mt-2 font-mono text-[12px] leading-[1.8] text-ink-2">
-                    {current?.preview.split('\n').map((line, index) => (
-                      <span key={index} className="block">
-                        {index === 0 ? <strong className="font-medium text-time-today">{line}</strong> : line}
-                      </span>
-                    ))}
-                  </p>
-                  {!current && <p className="text-[12.5px] text-ink-3">ไม่มีตัวอย่างข้อความ</p>}
+          <section ref={previewRef} className="min-w-0">
+            <ListLabel className="flex items-baseline justify-between">
+              ตัวอย่างข้อความ
+              <span className="font-mono text-[13px] text-ink-3">{current?.code ?? 'ยังไม่มีแม่แบบ'}</span>
+            </ListLabel>
+
+            {/* A mock LINE chat. The bubble uses a chat radius rather than the app's
+                own 2px sheet radius, because it is simulating someone else's UI. */}
+            <div className="bg-line-chat p-4 min-[900px]:rounded-sheet">
+              <div className="flex items-start gap-2">
+                <span className="size-7 shrink-0 rounded-full bg-ink" aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] text-white">WorkCatch</p>
+                  <div className="mt-1 rounded-[12px] bg-white px-3.5 py-3">
+                    <p className="font-mono text-[13px] leading-[1.8] text-ink-2">
+                      {current?.preview.split('\n').map((line, index) => (
+                        <span key={index} className="block">
+                          {index === 0 ? <strong className="font-medium text-time-today-strong">{line}</strong> : line}
+                        </span>
+                      ))}
+                    </p>
+                    {!current && <p className="text-[14px] text-ink-3">ไม่มีตัวอย่างข้อความ</p>}
+                  </div>
                 </div>
-                <p className="mt-1 font-mono text-[12px] text-white/70">16:59</p>
               </div>
             </div>
-          </div>
-
-          <p className="t-meta leading-relaxed text-ink-3">
-            ตัวอย่างนี้เรนเดอร์จากข้อมูลตัวอย่าง เพื่อให้เห็นการตัดคำโดยไม่เปิดเผยงานจริงของผู้ใช้
-          </p>
-        </aside>
+          </section>
+        </div>
       </div>
       <ConfirmDialog
         open={!!confirming}
@@ -207,14 +197,11 @@ export default function AdminSettings() {
   )
 }
 
-function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section>
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="t-section">{title}</h2>
-        {note && <p className="t-caption text-ink-3">{note}</p>}
-      </header>
-      <div className="mt-3 rounded-sheet border border-rule bg-sheet">{children}</div>
+    <section className="mb-2 min-[900px]:mb-6">
+      <ListLabel>{title}</ListLabel>
+      <div className={LIST}>{children}</div>
     </section>
   )
 }
@@ -278,12 +265,9 @@ function AdminSettingsSkeleton() {
   return (
     <SkeletonScreen label="กำลังโหลดการตั้งค่าระบบ">
       <SkeletonPageHeader />
-      <div className="mt-7 grid gap-8 xl:grid-cols-[1fr_344px]">
-        <div className="space-y-8">
-          <Skeleton w="100%" h="244px" className="rounded-sheet" />
-          <Skeleton w="100%" h="244px" className="rounded-sheet" />
-        </div>
-        <Skeleton w="100%" h="320px" className="rounded-sheet" />
+      <div className="mt-4 grid gap-6 min-[900px]:grid-cols-2">
+        <Skeleton w="100%" h="244px" className="rounded-sheet" />
+        <Skeleton w="100%" h="244px" className="rounded-sheet" />
       </div>
     </SkeletonScreen>
   )

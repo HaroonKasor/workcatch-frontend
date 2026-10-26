@@ -5,6 +5,8 @@ import { clock, timeStateOf } from '../lib/time'
 import { timeText } from '../lib/style'
 import type { Task } from '../lib/types'
 import { useNow } from '../lib/useNow'
+import { useIsDesktop } from '../lib/useMedia'
+import { CalendarMobile } from '../components/mobile/CalendarMobile'
 import { Skeleton as Block, SkeletonPageHeader, SkeletonScreen } from '../components/Skeleton'
 
 const DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -29,6 +31,11 @@ function CalendarSkeleton() {
 }
 
 export default function Calendar() {
+  const desktop = useIsDesktop()
+  return desktop ? <CalendarDesktop /> : <CalendarMobile />
+}
+
+function CalendarDesktop() {
   const { data, isPending } = useTasks()
   const now = useNow()
   const [offset, setOffset] = useState(0)
@@ -140,8 +147,7 @@ export default function Calendar() {
 
       {undated.length > 0 && (
         <p className="t-meta text-ink-3 mt-4">
-          มีงานที่ยังไม่มีกำหนดส่ง {undated.length} งาน จึงไม่ขึ้นบนปฏิทิน{' '}
-          <Link to="/app/tasks" className="underline">ดูรายการ</Link>
+          <Link to="/app/tasks" className="underline">ยังไม่มีกำหนดส่ง {undated.length} งาน</Link>
         </p>
       )}
     </>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ApiError, useDeleteAccount } from '../lib/api'
+import { ApiError, useDeleteAccount, useNotes, useTasks } from '../lib/api'
+import { Icon } from './mobile/Icon'
 import { store } from '../lib/store'
 
 /**
@@ -8,7 +9,6 @@ import { store } from '../lib/store'
  * phrase is never retained after the person closes it.
  */
 export function DeleteAccountDialog({
-  displayName,
   onClose,
 }: {
   displayName?: string
@@ -18,6 +18,8 @@ export function DeleteAccountDialog({
   const [confirmation, setConfirmation] = useState('')
   const [error, setError] = useState<string | null>(null)
   const deletion = useDeleteAccount()
+  const tasks = useTasks()
+  const notes = useNotes()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -51,8 +53,6 @@ export function DeleteAccountDialog({
     })
   }
 
-  const subtitle = displayName ? `${displayName} · เข้าสู่ระบบด้วย LINE` : 'เข้าสู่ระบบด้วย LINE'
-
   return (
     <dialog
       ref={ref}
@@ -68,23 +68,32 @@ export function DeleteAccountDialog({
       className="m-auto w-[392px] max-w-[calc(100vw-40px)] rounded-[10px] border border-rule bg-sheet p-0 shadow-[0_2px_4px_rgba(23,23,23,0.06),0_16px_40px_rgba(23,23,23,0.16)] backdrop:bg-ink/35"
     >
       <div className="p-5">
-        <h2 id="delete-account-title" className="font-display text-[17px] leading-[1.3] font-medium">
-          ลบบัญชีถาวร
+        <h2 id="delete-account-title" className="flex items-center gap-2.5 font-display text-[18px] leading-[1.3] font-medium">
+          <Icon name="trash" size={22} className="text-error" />
+          ลบบัญชีและข้อมูลทั้งหมด
         </h2>
-        <p className="mt-[5px] truncate text-[12px] text-ink-2">{subtitle}</p>
-        <p className="mt-3.5 text-[12.5px] leading-[1.45] text-ink-2">
-          ออกจากระบบทุกเครื่องทันที และกู้คืนไม่ได้ ถ้าเข้าด้วย LINE เดิมอีกครั้ง จะได้บัญชีใหม่ที่ว่างเปล่า
+        <dl className="mt-3.5 border-t border-rule-soft text-[14px]">
+          {[
+            ['งาน', tasks.isPending ? '…' : String(tasks.data?.length ?? 0)],
+            ['บันทึก', notes.isPending ? '…' : String(notes.data?.length ?? 0)],
+            ['ข้อมูลที่ซ่อนไว้', notes.isPending ? '…' : String((notes.data ?? []).filter((n) => n.blocks.some((b) => b.kind === 'credentials')).length)],
+            ['การเชื่อม LINE', 'ยกเลิก'],
+          ].map(([k, v]) => (
+            <div key={k} className="flex min-h-11 items-center justify-between border-b border-rule-soft">
+              <dt className="text-ink-2">{k}</dt>
+              <dd className="font-mono font-medium">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <p role="note" className="mt-3.5 flex items-center gap-2 rounded-control bg-error/[0.09] px-3 py-2.5 text-[14px] font-medium text-error">
+          <Icon name="alert" size={18} />ย้อนกลับไม่ได้
         </p>
-
-        <div className="mt-4.5 rounded-sheet border border-rule bg-ground px-3.5 py-3">
-          <p className="t-label text-ink-3">สิ่งที่จะเกิดขึ้น</p>
-          <p className="mt-1.5 font-mono text-[12px] leading-[1.45] text-ink-2">
-            ทันที — ข้อมูลลับ การเชื่อม LINE และการเตือนทั้งหมด
-          </p>
-          <p className="mt-1.5 font-mono text-[12px] leading-[1.45] text-ink-2">
-            ภายใน 30 วัน — งาน บันทึก โปรเจกต์ และประวัติทั้งหมด
-          </p>
-        </div>
+        <ul className="mt-3 space-y-1 text-[13px] leading-[1.45] text-ink-2">
+          <li>ออกจากระบบทุกเครื่องทันที</li>
+          <li>เข้าด้วย LINE เดิมอีกครั้ง จะได้บัญชีใหม่ที่ว่างเปล่า</li>
+          <li>ทันที: ข้อมูลลับ การเชื่อม LINE และการเตือน</li>
+          <li>ภายใน 30 วัน: งาน บันทึก โปรเจกต์ และประวัติ</li>
+        </ul>
 
         <label className="mt-4 block text-[12px] font-medium text-ink-2" htmlFor="delete-account-confirmation">
           พิมพ์ “ลบบัญชี” เพื่อยืนยัน
@@ -110,7 +119,7 @@ export function DeleteAccountDialog({
             onClick={close}
             className="wc-lift min-h-11 flex-1 rounded-control border border-rule text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-55"
           >
-            เก็บบัญชีไว้
+            ยกเลิก
           </button>
           <button
             type="button"
@@ -118,7 +127,7 @@ export function DeleteAccountDialog({
             onClick={submit}
             className="wc-lift min-h-11 flex-1 rounded-control bg-error text-[13px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-55"
           >
-            {deletion.isPending ? 'กำลังลบบัญชี…' : 'ลบบัญชีถาวร'}
+            {deletion.isPending ? 'กำลังลบบัญชี…' : 'ลบบัญชี'}
           </button>
         </div>
       </div>

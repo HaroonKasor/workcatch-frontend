@@ -6,8 +6,10 @@ import {
   mockChat, mockPreferences, mockStatus, mockSuggestion, saveMockPreferences, type MockFailure,
 } from './aiMock'
 import { outcomeBody, type AiFinal, type AiStatusValue } from './aiRules'
+import { mockDeleteAttachment, mockUpload, type MockRefusal } from './attachMock'
+import { mockAddLink, mockDeleteLink, type LinkRefusal } from './linkMock'
 import type {
-  DeletedProject, LineEvent, NotificationRecord, Note, NoteBlock, Project, Task, TaskAttachment, TaskReminder, TaskStatus,
+  DeletedProject, LineEvent, NotificationRecord, Note, NoteBlock, Project, Task, TaskAttachment, TaskLink, TaskReminder, TaskStatus,
 } from './types'
 
 /**
@@ -120,6 +122,7 @@ interface ApiAttachment {
   contentType: string
   sizeBytes: number
   scan: TaskAttachment['scan']
+  downloadable?: boolean
   createdAt: string
 }
 
@@ -183,6 +186,8 @@ function toAttachment(item: ApiAttachment): TaskAttachment {
       : `${Math.max(1, Math.round(item.sizeBytes / 1024))} KB`,
     scan: item.scan,
     at: item.createdAt,
+    contentType: item.contentType,
+    downloadable: item.downloadable ?? item.scan === 'CLEAN',
   }
 }
 
@@ -306,6 +311,8 @@ async function fetchTaskDetail(id: string): Promise<Task> {
     ...toTask(task, projects),
     subtasks: checklist.map(toSubtask),
     attachments: attachments.map(toAttachment),
+    // The contract embeds the list in the detail response.
+    links: (task as ApiTask & { links?: TaskLink[] }).links ?? [],
     reminders: reminders.map(toReminder),
   }
 }
@@ -1677,5 +1684,114 @@ export function useGenerateAiSuggestion() {
     onSuccess: (state) => qc.setQueryData(['ai', 'suggestion'], state),
     // usedToday moved (or the answer explains why it could not).
     onSettled: () => void qc.invalidateQueries({ queryKey: ['ai', 'status'] }),
+  })
+}
+
+/* ------------------------------------------------------------ attachments -- */
+//
+// backend/docs/attachments-api.md. Bytes go up and come back only through the
+// server: a download is an <a href download> to /download, a thumbnail is an
+// <img> of /preview (PNG/JPEG only). Nothing is ever shown from a blob URL of
+// what was picked, and a file name is only ever text.
+
+export const attachmentDownloadUrl = (id: string) => `/api/attachments/${encodeURIComponent(id)}/download`
+export const attachmentPreviewUrl = (id: string) => `/api/attachments/${encodeURIComponent(id)}/preview`
+
+/**
+ * One file, with upload progress (0–1). XHR rather than fetch, because fetch
+ * still cannot report upload progress. The CSRF header is the same one every
+ * other write sends; a bare 403 (stale token) is refreshed and retried once.
+ */
+export function uploadAttachment(taskId: string, file: File, onProgress: (fraction: number) => void, signal?: AbortSignal): Promise<TaskAttachment> {
+  if (!USE_API) {
+    return mockUpload(taskId, file, onProgress, signal).catch((e: unknown) => {
+      if (e && typeof e === 'object' && 'status' in e && 'body' in e) {
+        const r = e as MockRefusal
+        throw new ApiError(r.status, messageFor(r.status, r.body), r.body)
+      }
+      throw e
+    })
+  }
+  const send = (retried: boolean): Promise<TaskAttachment> => new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `/api/tasks/${encodeURIComponent(taskId)}/attachments`)
+    xhr.withCredentials = true
+    xhr.setRequestHeader('X-XSRF-TOKEN', readCookie('XSRF-TOKEN') ?? '')
+    xhr.responseType = 'text'
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total) }
+    xhr.onerror = () => reject(new ApiError(0, 'ต่อเซิร์ฟเวอร์ไม่ได้ เช็คอินเทอร์เน็ตแล้วลองใหม่'))
+    xhr.onabort = () => reject(new DOMException('aborted', 'AbortError'))
+    xhr.onload = () => {
+      let body: Record<string, unknown> | undefined
+      try {
+        const parsed: unknown = xhr.responseText ? JSON.parse(xhr.responseText) : undefined
+        body = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : undefined
+      } catch {
+        body = undefined
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && body) {
+        resolve(toAttachment(body as unknown as ApiAttachment))
+      } else if (xhr.status === 403 && !retried && !(xhr.getResponseHeader('Content-Type') ?? '').includes('json')) {
+        void fetch('/api/auth/me', { credentials: 'same-origin' }).then(() => send(true)).then(resolve, reject)
+      } else {
+        reject(new ApiError(xhr.status, messageFor(xhr.status, body), body))
+      }
+    }
+    signal?.addEventListener('abort', () => xhr.abort())
+    const form = new FormData()
+    form.append('file', file)
+    xhr.send(form)
+  })
+  return send(false)
+}
+
+export function useDeleteAttachment(taskId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (attachmentId: string) =>
+      USE_API
+        ? http<void>('DELETE', '/attachments/' + encodeURIComponent(attachmentId))
+        : localMutation(() => mockDeleteAttachment(taskId, attachmentId)),
+    onSuccess: () => invalidateTaskDetail(qc, taskId),
+  })
+}
+
+/* ------------------------------------------------------------------ links -- */
+
+/** Words for the contract's refusals; the server's own detail wins when it sends one. */
+function linkMessage(status: number, body?: Record<string, unknown>): string {
+  if (body?.code === 'INVALID_URL') return 'ใส่ได้เฉพาะลิงก์ http หรือ https'
+  if (body?.code === 'TOO_MANY_LINKS') return 'แนบลิงก์ได้สูงสุด 30 ลิงก์ต่องาน'
+  return messageFor(status, body)
+}
+
+export function useAddLink(taskId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { url: string; title?: string }): Promise<TaskLink> =>
+      USE_API
+        ? http<TaskLink>('POST', '/tasks/' + encodeURIComponent(taskId) + '/links', input).catch((e: unknown) => {
+            if (e instanceof ApiError) throw new ApiError(e.status, linkMessage(e.status, e.body), e.body)
+            throw e
+          })
+        : localMutation(() => mockAddLink(taskId, input)).catch((e: unknown) => {
+            if (e && typeof e === 'object' && 'status' in e && 'code' in e) {
+              const r = e as LinkRefusal
+              throw new ApiError(r.status, linkMessage(r.status, { code: r.code }), { code: r.code })
+            }
+            throw e
+          }),
+    onSuccess: () => invalidateTaskDetail(qc, taskId),
+  })
+}
+
+export function useDeleteLink(taskId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      USE_API
+        ? http<void>('DELETE', '/links/' + encodeURIComponent(linkId))
+        : localMutation(() => mockDeleteLink(taskId, linkId)),
+    onSuccess: () => invalidateTaskDetail(qc, taskId),
   })
 }

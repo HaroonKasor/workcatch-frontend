@@ -5,6 +5,9 @@ import { noteCategoryLabel } from '../lib/style'
 import { gutterLabel, timeStateOf } from '../lib/time'
 import { shortcutLabel, useAiPanel } from '../lib/aiPanel'
 import { useQuickAdd } from './QuickAdd'
+import { Icon, type IconName } from './mobile/Icon'
+
+const SECTION_ICON: Record<string, IconName> = { 'งาน': 'tasks', 'กล่องรับงาน': 'inbox', 'บันทึก': 'doc', 'คำสั่ง': 'plus' }
 
 /**
  * ค้นหา — Figma 433:2513. ⌘K / Ctrl+K, or "/" when not typing, from anywhere in
@@ -21,7 +24,7 @@ import { useQuickAdd } from './QuickAdd'
 
 interface Row {
   key: string
-  section: 'งาน' | 'บันทึก' | 'คำสั่ง'
+  section: 'งาน' | 'กล่องรับงาน' | 'บันทึก' | 'คำสั่ง'
   label: string
   meta?: string
   late?: boolean
@@ -92,9 +95,9 @@ export function SearchPalette() {
         .slice(0, 5)
         .map((t) => ({
           key: `t-${t.id}`,
-          section: 'งาน',
+          section: t.status === 'INBOX' ? 'กล่องรับงาน' : 'งาน',
           label: t.title,
-          meta: [t.status === 'INBOX' ? 'กล่องรับงาน' : gutterLabel(t, now), t.project?.name].filter(Boolean).join(' · '),
+          meta: [t.status === 'INBOX' ? t.source : gutterLabel(t, now), t.status === 'INBOX' ? t.requester : t.project?.name].filter(Boolean).join(' · '),
           late: timeStateOf(t, now) === 'late',
           to: `/app/tasks/${t.id}`,
         }))
@@ -106,11 +109,11 @@ export function SearchPalette() {
         .map((n) => ({ key: `n-${n.id}`, section: 'บันทึก', label: n.title, meta: noteCategoryLabel[n.category], to: `/app/notes/${n.id}` }))
       : []
     const commands: Row[] = [
-      { key: 'c-add', section: 'คำสั่ง', label: 'เพิ่มงาน', kbd: 'N', command: 'add' },
+      { key: 'c-add', section: 'คำสั่ง', label: q ? `เพิ่มงาน “${query.trim().slice(0, 12)}${query.trim().length > 12 ? '…' : ''}”` : 'เพิ่มงาน', kbd: 'N', command: 'add' },
       { key: 'c-inbox', section: 'คำสั่ง', label: 'ไปที่กล่องรับงาน', kbd: 'G I', to: '/app/inbox' },
       { key: 'c-ai', section: 'คำสั่ง', label: 'ถาม AI', kbd: shortcutLabel('J'), command: 'ai' },
       { key: 'c-tasks', section: 'คำสั่ง', label: 'ไปที่รายการงาน', to: '/app/tasks' },
-    ].filter((c) => !q || c.label.toLowerCase().includes(q)) as Row[]
+    ].filter((c) => !q || c.command === 'add' || c.label.toLowerCase().includes(q)) as Row[]
     return [...taskRows, ...noteRows, ...commands]
   }, [query, tasks.data, notes.data])
 
@@ -128,12 +131,12 @@ export function SearchPalette() {
       ref={ref}
       onClose={() => setOpen(false)}
       aria-label="ค้นหา"
-      className="m-0 mt-[12vh] w-full max-w-none bg-transparent p-0 px-4 backdrop:bg-ink/35 sm:mx-auto sm:w-[640px] sm:px-0"
+      className="m-0 mt-[12vh] w-full max-w-none bg-transparent p-0 px-4 backdrop:bg-ink/35 max-sm:mt-0 max-sm:h-full max-sm:max-h-none max-sm:px-0 sm:mx-auto sm:w-[640px] sm:px-0"
       onClick={(e) => { if (e.target === ref.current) hide() }}
     >
       {open && (
-        <div className="overflow-hidden rounded-control bg-sheet pb-2 shadow-[0_8px_28px_rgba(20,23,26,0.16)]">
-          <div className="flex items-center justify-between gap-3 border-b border-rule-soft py-4 pr-4 pl-5">
+        <div className="overflow-hidden rounded-control bg-sheet pb-2 shadow-[0_8px_28px_rgba(20,23,26,0.16)] max-sm:h-full max-sm:rounded-none">
+          <div className="flex items-center justify-between gap-3 border-b border-rule-soft py-4 pr-4 pl-5 max-sm:border-0 max-sm:py-3 max-sm:pl-4">
             <input
               autoFocus
               value={query}
@@ -159,16 +162,17 @@ export function SearchPalette() {
               aria-expanded
               aria-controls={listId}
               aria-activedescendant={rows[current] ? `${listId}-${rows[current].key}` : undefined}
-              className="min-w-0 flex-1 bg-transparent text-[17px] placeholder:text-ink-3 focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent text-[17px] placeholder:text-ink-3 focus:outline-none max-sm:h-12 max-sm:rounded-control max-sm:border max-sm:border-ink max-sm:px-3 max-sm:text-[17px]"
             />
-            <kbd className="shrink-0 rounded-[4px] border border-rule bg-ground px-1.5 py-px font-mono text-[11px] text-ink-2">Esc</kbd>
+            <kbd className="shrink-0 rounded-[4px] border border-rule bg-ground px-1.5 py-px font-mono text-[11px] text-ink-2 max-sm:hidden">Esc</kbd>
+            <button type="button" onClick={hide} className="min-h-11 shrink-0 px-1 text-[16px] font-medium sm:hidden">ยกเลิก</button>
           </div>
-          <ul id={listId} role="listbox" aria-label="ผลการค้นหา" className="max-h-[60vh] overflow-y-auto">
+          <ul id={listId} role="listbox" aria-label="ผลการค้นหา" className="max-h-[60vh] overflow-y-auto max-sm:max-h-[calc(100%-72px)]">
             {rows.length === 0 && <li className="px-5 py-4 text-[13px] text-ink-3">ไม่พบงานหรือบันทึกที่ตรงกับคำค้น</li>}
             {rows.map((r, i) => (
               <li key={r.key} role="presentation">
                 {(i === 0 || rows[i - 1].section !== r.section) && (
-                  <p className="pt-3 pb-1 pl-5 text-[12px] font-medium text-ink-3">{r.section}</p>
+                  <p className="pt-3 pb-1 pl-5 text-[12px] font-medium text-ink-3 max-sm:pl-4 max-sm:text-[13px]">{r.section}</p>
                 )}
                 <div
                   id={`${listId}-${r.key}`}
@@ -176,14 +180,17 @@ export function SearchPalette() {
                   aria-selected={i === current}
                   onClick={() => run(r)}
                   onMouseEnter={() => setActive(i)}
-                  className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 py-[9px] pr-4 pl-5 ${i === current ? 'bg-selected' : ''}`}
+                  className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 py-[9px] pr-4 pl-5 max-sm:min-h-14 max-sm:pl-4 ${i === current ? 'bg-selected' : ''}`}
                 >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span className={`truncate text-[14px] ${i === current ? 'font-medium' : ''}`}>{r.label}</span>
-                    {r.meta && <span className={`hidden shrink-0 text-[12px] sm:inline ${r.late ? 'text-time-late' : 'text-ink-3'}`}>{r.meta}</span>}
+                  <span className="flex min-w-0 items-center gap-3 max-sm:gap-3.5">
+                    <Icon name={SECTION_ICON[r.section]} size={20} className="text-ink-2 sm:hidden" />
+                    <span className="flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-3">
+                      <span className={`truncate text-[14px] max-sm:text-[16px] ${i === current ? 'font-medium' : ''}`}>{r.label}</span>
+                      {r.meta && <span className={`shrink-0 truncate text-[12px] max-sm:text-[13px] ${r.late ? 'text-time-late' : 'text-ink-3'}`}>{r.meta}</span>}
+                    </span>
                   </span>
                   {(r.kbd || i === current) && (
-                    <kbd className="shrink-0 rounded-[4px] border border-rule bg-ground px-1.5 py-px font-mono text-[11px] text-ink-2">
+                    <kbd className="shrink-0 rounded-[4px] border border-rule bg-ground px-1.5 py-px font-mono text-[11px] text-ink-2 max-sm:hidden">
                       {i === current && r.section !== 'คำสั่ง' ? 'Enter' : r.kbd ?? 'Enter'}
                     </kbd>
                   )}

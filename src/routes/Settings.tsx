@@ -1,3 +1,4 @@
+import { SettingsMobile } from '../components/mobile/SettingsMobile'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { DeleteAccountDialog } from '../components/DeleteAccountDialog'
@@ -95,16 +96,46 @@ export default function Settings() {
     })
   }
 
+  function doLogout() {
+    setLogoutError(null)
+    logout.mutate(undefined, {
+      onSuccess: () => {
+        store.reset()
+        navigate('/', { replace: true })
+      },
+      onError: (error) => {
+        const failure = error instanceof ApiError ? error : null
+        if (failure?.status === 401) {
+          store.reset()
+          navigate('/', { replace: true })
+          return
+        }
+        toast({ title: failure?.message ?? 'ออกจากระบบไม่สำเร็จ ลองใหม่อีกครั้ง', tone: 'error' })
+      },
+    })
+  }
+
   return (
     <>
-      <p className="t-caption text-ink-3">บัญชีและการเตือน</p>
-      <h1 className="t-page-title mt-1">ตั้งค่า</h1>
+      <SettingsMobile
+        me={me.data}
+        line={lineStatus}
+        onPreference={updatePreference}
+        onTest={sendTestMessage}
+        testing={testMessage.isPending}
+        onLogout={doLogout}
+        loggingOut={logout.isPending}
+        onDelete={() => setDeleteAccountOpen(true)}
+      />
+      <div className="max-lg:hidden">
+      <p className="t-caption text-ink-3 max-lg:hidden">บัญชีและการเตือน</p>
+      <h1 className="t-page-title mt-1 max-lg:px-4 max-lg:pb-3 max-lg:text-[32px]">ตั้งค่า</h1>
       {me.isError && (
         <p role="alert" className="mt-3 text-[12px] text-error">โหลดข้อมูลบัญชีบางส่วนไม่สำเร็จ</p>
       )}
 
-      <div className="mt-7 grid gap-8 xl:grid-cols-[1fr_344px]">
-        <div className="min-w-0 space-y-8">
+      <div className="mt-7 grid gap-8 max-lg:mt-0 max-lg:gap-0 xl:grid-cols-[1fr_344px]">
+        <div className="min-w-0 space-y-8 max-lg:space-y-0">
           <Section title="บัญชี" note="เข้าระบบด้วย LINE">
             <div className="flex items-center gap-3 border-b border-rule-soft px-5 py-3.5">
               <span className="size-9 shrink-0 rounded-full bg-ink/10" aria-hidden />
@@ -142,6 +173,39 @@ export default function Settings() {
             <KV k="เขตเวลา" v={me.data?.timezone ?? 'โหลดเขตเวลาไม่สำเร็จ'} last />
           </Section>
 
+          {/*
+            The way into the admin area on a phone.
+
+            It existed only in the desktop rail, which is `hidden lg:block` — so
+            at 390px the link was in the DOM and unreachable, and the one person
+            who holds both roles is also the one who runs this product from a
+            phone. `lg:hidden` because above that width the rail is showing the
+            same entry two columns to the left, and the wording is the rail's own
+            so the two cannot drift apart.
+
+            Shown only to accounts that hold the role, exactly as the rail does.
+            This is a hint, not a permission: the API enforces the role on every
+            /api/admin/** request. Placed right under บัญชี, not after ลบบัญชี:
+            at the bottom of a long phone page nobody found it.
+          */}
+          {me.data?.admin && (
+            <div className="lg:hidden">
+              <Section title="ผู้ดูแลระบบ" note="บัญชีนี้มีสิทธิ์ดูแลระบบ">
+                <div className="flex flex-wrap items-center gap-4 px-5 py-4">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13.5px] font-medium">โหมดผู้ดูแลระบบ</span>
+                  </span>
+                  <Link
+                    to="/admin"
+                    className="wc-lift flex min-h-11 shrink-0 items-center rounded-control border border-rule bg-sheet px-3.5 text-[12px] font-medium"
+                  >
+                    เปิดโหมดผู้ดูแลระบบ
+                  </Link>
+                </div>
+              </Section>
+            </div>
+          )}
+
           <AiSettings />
 
           <Section title="การเชื่อม LINE" note="ต้องครบทั้งสามข้อถึงจะได้รับการเตือน">
@@ -149,11 +213,6 @@ export default function Settings() {
               <div className="border-b border-rule-soft bg-error/[0.07] px-5 py-4">
                 <p className="text-[14px] font-semibold text-error">
                   {!lineStatus.linked ? 'ตอนนี้คุณจะไม่ได้รับการเตือนเลย' : 'การเตือนผ่าน LINE หยุดอยู่'}
-                </p>
-                <p className="t-body text-ink-2 mt-1.5 leading-relaxed">
-                  {!lineStatus.linked
-                    ? 'ยังไม่ได้เชื่อมบัญชี LINE จึงส่งข้อความหาคุณไม่ได้'
-                    : 'WorkCatch ถูกบล็อก ระบบหยุดส่งอัตโนมัติแล้ว งานทั้งหมดยังอยู่ครบ'}
                 </p>
               </div>
             )}
@@ -215,9 +274,6 @@ export default function Settings() {
             <div className="flex flex-wrap items-center gap-4 border-b border-rule-soft px-5 py-4">
               <span className="min-w-0 flex-1">
                 <span className="block text-[13.5px] font-medium">ทดสอบการเตือน</span>
-                <span className="t-meta block leading-relaxed text-ink-3">
-                  ส่งข้อความจริงหาตัวเองหนึ่งข้อความ ถ้าไม่เข้าแปลว่าตั้งค่ายังไม่ครบ · นับ 1 ข้อความจากโควตา ส่งได้ 3 ครั้งต่อวัน
-                </span>
               </span>
               <span className="text-right">
                 <button
@@ -304,12 +360,6 @@ export default function Settings() {
             <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-start">
               <span className="min-w-0 flex-1">
                 <span className="block text-[13.5px] font-semibold">ลบบัญชีและข้อมูลทั้งหมด</span>
-                <span className="t-meta mt-1 block leading-relaxed text-ink-2">
-                  ออกจากระบบทุกเครื่องทันที ข้อมูลเข้าสู่ระบบที่ซ่อนไว้และการเชื่อม LINE ถูกลบทันที ส่วนงาน บันทึก และโปรเจกต์ถูกลบถาวรภายใน 30 วัน กู้คืนไม่ได้
-                </span>
-                <span className="mt-2 block text-[12px] leading-relaxed text-ink-3">
-                  ถ้าแค่ไม่อยากรับการเตือน ปิด “รับการเตือนทาง LINE” ข้างบนแทนได้ งานทั้งหมดยังอยู่
-                </span>
               </span>
               <button
                 type="button"
@@ -321,40 +371,6 @@ export default function Settings() {
             </div>
           </Section>
 
-          {/*
-            The way into the admin area on a phone.
-
-            It existed only in the desktop rail, which is `hidden lg:block` — so
-            at 390px the link was in the DOM and unreachable, and the one person
-            who holds both roles is also the one who runs this product from a
-            phone. `lg:hidden` because above that width the rail is showing the
-            same entry two columns to the left, and the wording is the rail's own
-            so the two cannot drift apart.
-
-            Shown only to accounts that hold the role, exactly as the rail does.
-            This is a hint, not a permission: the API enforces the role on every
-            /api/admin/** request.
-          */}
-          {me.data?.admin && (
-            <div className="lg:hidden">
-              <Section title="ผู้ดูแลระบบ" note="บัญชีนี้มีสิทธิ์ดูแลระบบ">
-                <div className="flex flex-wrap items-center gap-4 px-5 py-4">
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13.5px] font-medium">โหมดผู้ดูแลระบบ</span>
-                    <span className="t-meta block leading-relaxed text-ink-3">
-                      ดูสถานะการส่ง งานเข้าจาก LINE และผู้ใช้ทั้งหมด · เป็นคนละหน้ากับการตั้งค่าของบัญชีคุณเอง
-                    </span>
-                  </span>
-                  <Link
-                    to="/admin"
-                    className="wc-lift flex min-h-11 shrink-0 items-center rounded-control border border-rule bg-sheet px-3.5 text-[12px] font-medium"
-                  >
-                    เปิดโหมดผู้ดูแลระบบ
-                  </Link>
-                </div>
-              </Section>
-            </div>
-          )}
         </div>
 
         {/* Sticky where there is a second column to be sticky in: on a desktop
@@ -370,14 +386,9 @@ export default function Settings() {
               </span>
               <span className="t-body text-ink-2">การเตือนที่ตั้งไว้ใน 30 วันข้างหน้า</span>
             </p>
-            <p className="t-meta mt-2 leading-relaxed text-ink-3">
-              ส่งไปแล้ว 30 วันที่ผ่านมา {usage.sentLast30Days}
-            </p>
           </div>
-          <p className="t-meta mt-3.5 leading-relaxed text-ink-3">
-            แสดงเฉพาะการเตือนของบัญชีนี้จากข้อมูลที่ระบบบันทึกไว้
-          </p>
         </aside>
+      </div>
       </div>
       {deleteAccountOpen && (
         <DeleteAccountDialog
@@ -389,14 +400,13 @@ export default function Settings() {
   )
 }
 
-function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <section>
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="t-section">{title}</h2>
-        {note && <p className="t-caption text-ink-3">{note}</p>}
+      <header className="flex flex-wrap items-center justify-between gap-2 max-lg:bg-ground max-lg:px-4 max-lg:pt-5 max-lg:pb-2.5">
+        <h2 className="t-section max-lg:font-sans max-lg:text-[14px] max-lg:font-medium max-lg:text-ink-2">{title}</h2>
       </header>
-      <div className="mt-3 rounded-sheet border border-rule bg-sheet">{children}</div>
+      <div className="mt-3 rounded-sheet border border-rule bg-sheet max-lg:mt-0 max-lg:rounded-none max-lg:border-x-0">{children}</div>
     </section>
   )
 }
@@ -482,7 +492,7 @@ function StatusChip({ ok, label }: { ok: boolean; label: string }) {
 }
 
 /** One of the three prerequisites, with whatever control belongs to it. */
-function LineRow({ title, chip, why, hint, mobileHint, last, children }: {
+function LineRow({ title, chip, last, children }: {
   title: string
   chip: { ok: boolean; label: string }
   why: string
@@ -498,21 +508,13 @@ function LineRow({ title, chip, why, hint, mobileHint, last, children }: {
           <span className="text-[13.5px] font-medium">{title}</span>
           <StatusChip {...chip} />
         </span>
-        <span className="t-meta mt-1 block leading-relaxed text-ink-3">{why}</span>
-        {hint && !mobileHint && (
-          <span className="t-meta mt-1 block leading-relaxed text-ink-3">
-            {hint}
-          </span>
-        )}
-        {hint && mobileHint && <span className="t-meta mt-1 hidden leading-relaxed text-ink-3 lg:block">{hint}</span>}
       </span>
       {children}
-      {mobileHint && <span className="t-meta w-full leading-relaxed text-ink-3 lg:hidden">{mobileHint}</span>}
     </div>
   )
 }
 
-function Toggle({ label, why, cost, on, onChange, last, disabled, pending }: {
+function Toggle({ label, on, onChange, last, disabled, pending }: {
   label: string
   why?: string
   cost?: string
@@ -526,8 +528,6 @@ function Toggle({ label, why, cost, on, onChange, last, disabled, pending }: {
     <div className={`flex items-center justify-between gap-4 px-5 py-3.5 ${last ? '' : 'border-b border-rule-soft'}`}>
       <span className="min-w-0">
         <span className="block text-[13px] text-ink-2">{label}</span>
-        {why && <span className="t-meta block text-ink-3">{why}</span>}
-        {cost && <span className="mt-0.5 block font-mono text-[12px] text-ink-3">{cost}</span>}
       </span>
       <button
         type="button"
@@ -596,7 +596,7 @@ function AiSettings() {
           <>
             {!available && (
               <p className="border-b border-rule-soft px-5 py-3.5 text-[13px] text-ink-2">
-                ผู้ดูแลระบบยังไม่ได้เปิดใช้ AI · ตั้งค่าไว้ล่วงหน้าได้ จะมีผลเมื่อเปิดใช้
+                ผู้ดูแลระบบยังไม่ได้เปิดใช้ AI
               </p>
             )}
             <Toggle
@@ -631,9 +631,6 @@ function AiSettings() {
               <div className="mt-2 h-1 w-full rounded-pill bg-rule-soft">
                 <div className="h-full rounded-pill bg-ink" style={{ width: `${limit > 0 ? Math.min(used / limit, 1) * 100 : 0}%` }} />
               </div>
-              <p className="t-meta mt-2 text-ink-3">
-                นับใหม่ทุกเที่ยงคืน{limit > 0 ? ` · เมื่อครบ ${limit} คำถาม ค้นหาแบบปกติยังใช้ได้` : ''}
-              </p>
             </div>
           </>
         )}

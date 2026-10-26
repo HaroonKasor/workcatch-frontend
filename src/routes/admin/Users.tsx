@@ -4,6 +4,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useToast } from '../../components/Toast'
+import { LIST, PageTitle, Pills } from './ui'
 import {
   ApiError,
   useAdminUsers,
@@ -128,44 +129,65 @@ export default function AdminUsers() {
 
   return (
     <>
-      <p className="t-caption text-ink-3">โหมดผู้ดูแลระบบ</p>
-      <h1 className="t-page-title mt-1">ผู้ใช้</h1>
-      <p className="t-body mt-2 text-ink-2">{allRows.length} บัญชี</p>
+      <div className="min-[900px]:flex min-[900px]:items-center min-[900px]:justify-between min-[900px]:gap-4">
+        <PageTitle>ผู้ใช้</PageTitle>
+        <label className="block px-4 pb-3 min-[900px]:w-[264px] min-[900px]:p-0">
+          <span className="sr-only">ค้นหาชื่อ</span>
+          <span className="relative block">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3">
+              <circle cx="7" cy="7" r="4.5" />
+              <path d="m10.5 10.5 3 3" />
+            </svg>
+            <input
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              placeholder="ค้นหาชื่อ"
+              className="min-h-11 w-full rounded-control border border-rule bg-sheet pr-3 pl-10 text-[14px] placeholder:text-ink-3"
+            />
+          </span>
+        </label>
+      </div>
 
       {error && (
-        <p role="alert" className="mt-3 rounded-control border border-error px-4 py-3 text-[12px] text-error">
+        <p role="alert" className="mx-4 mb-3 rounded-control border border-error px-4 py-3 text-[13px] text-error min-[900px]:mx-0 min-[900px]:mt-3">
           {error}
         </p>
       )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        {TABS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            aria-pressed={tab === item.key}
-            onClick={() => setTab(item.key)}
-            className={[
-              'wc-lift min-h-11 rounded-pill px-3.5 text-[12px]',
-              tab === item.key ? 'bg-ink font-medium text-on-dark' : 'border border-rule bg-sheet text-ink-2',
-            ].join(' ')}
-          >
-            {item.label}
-          </button>
-        ))}
-        <label className="min-w-0 flex-1 basis-56 sm:max-w-[264px]">
-          <span className="sr-only">ค้นหาชื่อ</span>
-          <input
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="ค้นหาชื่อ"
-            className="min-h-11 w-full rounded-control border border-rule bg-sheet px-3 text-[12px] placeholder:text-ink-3"
-          />
-        </label>
+      <div className="min-[900px]:mt-4">
+        <Pills
+          items={TABS.map((t) => (t.key === 'all' ? { ...t, label: `${t.label} ${allRows.length}` } : t))}
+          value={tab}
+          onChange={setTab}
+        />
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-sheet border border-rule bg-sheet">
-        <table className="w-full min-w-[760px] text-left">
+      {/* Under 900px: one row per person. */}
+      <ul className={`${LIST} min-[900px]:hidden`}>
+        {rows.map((user, index) => (
+          <li key={user.id} className={index < rows.length - 1 ? 'border-b border-rule-soft' : ''}>
+            <button
+              type="button"
+              onClick={() => setDetail(user)}
+              className="flex min-h-[68px] w-full items-center gap-3 px-4 py-2.5 text-left"
+            >
+              <Avatar user={user} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-medium">
+                  {user.name}
+                  {user.role === 'ADMIN' && <span className="ml-2 text-[13px] font-normal text-ink-3">ผู้ดูแล</span>}
+                </span>
+                <span className="block text-[13px] text-ink-3">สร้างบัญชี {formatCreatedAt(user.createdAt)}</span>
+              </span>
+              <AccountStatus user={user} />
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {/* From 900px: a table. */}
+      <div className={`${LIST} hidden min-[900px]:block`}>
+        <table className="w-full text-left">
           <thead>
             <tr className="border-b border-rule">
               <Th>ผู้ใช้</Th>
@@ -179,38 +201,30 @@ export default function AdminUsers() {
             {rows.map((user, index) => (
               <tr
                 key={user.id}
-                onClick={() => setDetail(user)}
-                className={[
-                  'cursor-pointer transition-colors hover:bg-ink/[0.025]',
-                  index < rows.length - 1 ? 'border-b border-rule-soft' : '',
-                ].join(' ')}
+                className={['transition-colors hover:bg-ink/[0.025]', index < rows.length - 1 ? 'border-b border-rule-soft' : ''].join(' ')}
               >
-                <td className="px-5 py-3">
-                  {/* The name is a button as well as the row click: keyboard users need the same detail view. */}
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      setDetail(user)
-                    }}
-                    className="flex min-h-11 items-center gap-3 rounded-control text-left"
-                  >
+                <td className="px-4 py-2">
+                  <span className="flex min-h-11 items-center gap-3 text-[13px] font-medium">
                     <Avatar user={user} />
-                    <span className="text-[13px] font-medium">
+                    <span>
                       {user.name}
                       {user.role === 'ADMIN' && (
-                        <span className="t-caption ml-2 rounded-[3px] bg-ink/[0.08] px-1.5 py-0.5 text-ink-2">
-                          ผู้ดูแล
-                        </span>
+                        <span className="t-caption ml-2 rounded-[3px] bg-ink/[0.08] px-1.5 py-0.5 text-ink-2">ผู้ดูแล</span>
                       )}
                     </span>
-                  </button>
+                  </span>
                 </td>
-                <td className="px-5 py-3"><AccountStatus user={user} /></td>
-                <td className="px-5 py-3 font-mono text-[12px] text-ink-3">{user.timezone}</td>
-                <td className="px-5 py-3 text-[12px] text-ink-2">{formatCreatedAt(user.createdAt)}</td>
-                <td className="px-5 py-3">
-                  <Action user={user} disabled={isPending} onChange={setAccountStatus} />
+                <td className="px-4 py-2"><AccountStatus user={user} /></td>
+                <td className="px-4 py-2 font-mono text-[13px] text-ink-3">{user.timezone}</td>
+                <td className="px-4 py-2 text-[13px] text-ink-2">{formatCreatedAt(user.createdAt)}</td>
+                <td className="px-4 py-2">
+                  <button
+                    type="button"
+                    onClick={() => setDetail(user)}
+                    className="wc-lift min-h-11 rounded-control border border-rule bg-sheet px-4 text-[13px] font-medium"
+                  >
+                    จัดการ
+                  </button>
                 </td>
               </tr>
             ))}
@@ -218,11 +232,9 @@ export default function AdminUsers() {
         </table>
       </div>
 
-      {apiUsers.isError && <p role="alert" className="mt-3 text-[12px] text-error">โหลดรายชื่อผู้ใช้ไม่สำเร็จ</p>}
+      {apiUsers.isError && <p role="alert" className="mt-3 px-4 text-[13px] text-error min-[900px]:px-0">โหลดรายชื่อผู้ใช้ไม่สำเร็จ</p>}
       {rows.length === 0 && (
-        <p className="t-body text-ink-2 mt-4 rounded-sheet border border-rule bg-sheet px-5 py-6">
-          ไม่มีบัญชีที่ตรงกับตัวกรองนี้
-        </p>
+        <p className={`${LIST} mt-4 px-4 py-5 text-[14px] text-ink-2`}>ไม่มีบัญชีที่ตรงกับตัวกรองนี้</p>
       )}
 
       <UserDetail
@@ -231,20 +243,13 @@ export default function AdminUsers() {
         onClose={() => setDetail(null)}
         onChange={setAccountStatus}
       />
-
-      <section className="mt-8 rounded-sheet border border-rule bg-ground px-5 py-4">
-        <h2 className="t-label text-ink-3">สิ่งที่หน้านี้จงใจไม่แสดง</h2>
-        <p className="t-meta mt-2 leading-relaxed text-ink-2">
-          ไม่มีอีเมล ชื่องาน จำนวนงาน โน้ต หรือเนื้อหาข้อความ แสดงเฉพาะสถานะบัญชี บทบาท เขตเวลา และวันที่สร้างบัญชี
-        </p>
-      </section>
     </>
   )
 }
 
 function Avatar({ user }: { user: Row }) {
   return (
-    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-mint font-mono text-[12px] text-brand-strong" aria-hidden>
+    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-mint font-mono text-[13px] text-brand-strong min-[900px]:size-8" aria-hidden>
       {user.name.slice(0, 1)}
     </span>
   )
@@ -257,39 +262,15 @@ function AccountStatus({ user }: { user: Row }) {
   const tone = deleted ? 'bg-ground text-ink-3' : suspended ? 'bg-error/[0.08] text-error' : 'bg-mint text-brand-strong'
 
   return (
-    <span className={`t-caption inline-flex items-center gap-1 rounded-pill px-2 py-0.5 ${tone}`}>
+    <span className={`inline-flex shrink-0 items-center gap-1 rounded-pill px-2 py-0.5 text-[13px] ${tone}`}>
       <span className="font-mono" aria-hidden>{deleted || suspended ? '✕' : '✓'}</span>
       {label}
     </span>
   )
 }
 
-function Action({ user, disabled, onChange }: {
-  user: Row
-  disabled: boolean
-  onChange: (user: Row, nextSuspended: boolean) => void
-}) {
-  if (user.status === 'DELETED') return <span className="text-[12px] text-ink-3">กู้คืนไม่ได้</span>
-  const suspended = isSuspended(user)
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={(event) => {
-        event.stopPropagation()
-        onChange(user, !suspended)
-      }}
-      className={`wc-lift min-h-11 rounded-control border border-rule bg-sheet px-3 text-[12px] font-medium disabled:opacity-45 ${
-        suspended ? 'text-ink-2' : 'text-error'
-      }`}
-    >
-      {suspended ? 'เปิดใช้บัญชี' : 'ระงับบัญชี'}
-    </button>
-  )
-}
-
 function Th({ children }: { children: ReactNode }) {
-  return <th scope="col" className="t-label px-5 py-2.5 font-medium text-ink-3">{children}</th>
+  return <th scope="col" className="t-label px-4 py-2.5 font-medium text-ink-3">{children}</th>
 }
 
 function UserDetail({ user, disabled, onClose, onChange }: {

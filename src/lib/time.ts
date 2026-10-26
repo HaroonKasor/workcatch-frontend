@@ -208,3 +208,16 @@ export function bangkokAt(days: number, hour: number, now = new Date()): Date {
   const bangkok = new Date(now.getTime() + 7 * 3_600_000)
   return new Date(Date.UTC(bangkok.getUTCFullYear(), bangkok.getUTCMonth(), bangkok.getUTCDate() + days, hour) - 7 * 3_600_000)
 }
+
+/** "อีก 1 ชม. 19 นาที" — the time left to a deadline, short enough for a row. */
+export function remaining(dueIso: string, now: Date): string {
+  const minutes = Math.max(0, Math.round((Date.parse(dueIso) - now.getTime()) / 60_000))
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return h > 0 ? `อีก ${h} ชม. ${m} นาที` : `อีก ${m} นาที`
+}
+
+/** "อ. 8 ก.ย." — today's date as the phone's title carries it. */
+export function shortWeekdayDate(d: Date = new Date(), timeZone = BANGKOK): string {
+  return new Intl.DateTimeFormat('th-TH', { timeZone, weekday: 'short', day: 'numeric', month: 'short' }).format(d)
+}

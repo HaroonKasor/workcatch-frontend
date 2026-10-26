@@ -6,6 +6,8 @@ import { gutterLabel, timeStateOf } from '../lib/time'
 import { COOL, projectDot, timeText } from '../lib/style'
 import type { DeletedProject, Project, ProjectColor, Task } from '../lib/types'
 import { useNow } from '../lib/useNow'
+import { useIsDesktop } from '../lib/useMedia'
+import { ProjectsMobile } from '../components/mobile/ProjectsMobile'
 import { SkeletonCard, SkeletonPageHeader, SkeletonScreen } from '../components/Skeleton'
 
 /**
@@ -37,6 +39,7 @@ export default function Projects() {
   const tasks = useTasks()
   const now = useNow()
   const [creating, setCreating] = useState(false)
+  const desktop = useIsDesktop()
 
   if (projects.isPending || tasks.isPending) return <ProjectsSkeleton />
 
@@ -47,6 +50,7 @@ export default function Projects() {
     (a, b) => Number(!!a.archivedAt) - Number(!!b.archivedAt),
   )
   const archived = ordered.filter((p) => p.archivedAt).length
+  if (!desktop) return <ProjectsMobile projects={ordered} tasks={all} now={now}><DeletedProjects now={now} /></ProjectsMobile>
 
   return (
     <>
@@ -72,7 +76,6 @@ export default function Projects() {
             className="wc-lift flex min-h-[168px] flex-col items-center justify-center gap-1.5 rounded-sheet border border-dashed border-ink-3 px-5 py-5 text-ink-2 hover:border-ink-2"
           >
             <span className="text-[13.5px] font-medium">+ สร้างโปรเจกต์</span>
-            <span className="t-meta text-ink-3">เลือกสีได้จาก 6 สีโทนเย็น</span>
           </button>
         )}
       </div>

@@ -8,6 +8,7 @@ import { clock } from '../lib/time'
 import { AiActionList } from './AiActions'
 import { AiPanelContext, shortcutLabel } from '../lib/aiPanel'
 import { Skeleton } from './Skeleton'
+import { Icon } from './mobile/Icon'
 
 /**
  * "ถาม AI" — Figma 445:2428 (open on the overview), 446:2424 (asking about a
@@ -353,14 +354,26 @@ function AiPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
       >
         <div className="mx-auto mt-2.5 h-1 w-[38px] shrink-0 rounded-pill bg-rule lg:hidden" aria-hidden />
         <header className="flex shrink-0 items-center justify-between border-b border-rule-soft pt-4 pr-4 pb-3.5 pl-5">
-          <h2 id={titleId} className="font-display text-[17px] font-medium leading-[1.3]">ถาม AI</h2>
-          <div className="flex items-center gap-4 text-[13px] font-medium text-ink-2">
-            <button type="button" onClick={() => setView(view === 'history' ? 'chat' : 'history')} aria-pressed={view === 'history'} className="min-h-9 hover:text-ink">
-              ประวัติ
+          <h2 id={titleId} className="font-display text-[17px] font-medium leading-[1.3] max-lg:text-[20px]">
+            {view === 'history' && (
+              <button type="button" onClick={() => setView('chat')} aria-label="กลับไปแชท" className="mr-1 -ml-2 inline-flex size-11 items-center justify-center align-middle lg:hidden">
+                <Icon name="chevronLeft" size={22} />
+              </button>
+            )}
+            ถาม AI
+          </h2>
+          <div className="flex items-center gap-4 text-[13px] font-medium text-ink-2 max-lg:gap-1">
+            <button type="button" onClick={() => setView(view === 'history' ? 'chat' : 'history')} aria-pressed={view === 'history'} aria-label="ประวัติ" className="min-h-9 hover:text-ink max-lg:flex max-lg:size-11 max-lg:items-center max-lg:justify-center">
+              <span className="max-lg:hidden">ประวัติ</span>
+              <Icon name="history" size={24} className="lg:hidden" />
             </button>
-            <button type="button" onClick={newChat} className="min-h-9 hover:text-ink">แชทใหม่</button>
-            <button type="button" onClick={onClose} className="flex min-h-9 items-center gap-1.5 hover:text-ink">
-              ปิด
+            {view === 'history' && (
+              <button type="button" onClick={() => commit({ ...stored, history: [] })} className="min-h-11 px-2 text-[15px] text-time-late lg:hidden">ล้างประวัติ</button>
+            )}
+            <button type="button" onClick={newChat} className={`min-h-9 hover:text-ink max-lg:min-h-11 max-lg:text-[14px] ${messages.length === 0 || view === 'history' ? 'max-lg:hidden' : ''}`}>แชทใหม่</button>
+            <button type="button" onClick={onClose} aria-label="ปิด" className="flex min-h-9 items-center gap-1.5 hover:text-ink max-lg:size-11 max-lg:justify-center">
+              <span className="max-lg:hidden">ปิด</span>
+              <Icon name="close" size={24} className="lg:hidden" />
               <kbd className="hidden rounded-[4px] border border-rule bg-ground px-1.5 py-px font-mono text-[11px] text-ink-2 lg:inline">Esc</kbd>
             </button>
           </div>
@@ -370,16 +383,21 @@ function AiPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
           {view === 'history' ? (
             <History conversations={stored.history} current={stored.current} onOpen={reopen} />
           ) : off === 'unavailable' ? (
-            <Notice title="ผู้ช่วย AI ยังไม่พร้อมใช้งาน" body="ผู้ดูแลระบบยังไม่ได้เปิดใช้ AI ส่วนอื่นของ WorkCatch ใช้ได้ตามปกติ" />
+            <Notice title="ผู้ช่วย AI ยังไม่พร้อมใช้งาน" />
           ) : off === 'disabled' ? (
             <Notice
               title="ผู้ช่วย AI ปิดอยู่"
-              body="เมื่อเปิดแล้ว ชื่องาน กำหนดส่ง และชื่อโปรเจกต์ของคุณจะถูกส่งไปประมวลผลที่ Google"
-              action={<Link to="/app/settings#ai" onClick={onClose} className="wc-lift inline-flex min-h-9 items-center rounded-control bg-brand px-3.5 text-[13px] font-medium text-on-dark">ไปที่ตั้งค่า AI</Link>}
+              action={<Link to="/app/settings#ai" onClick={onClose} className="wc-lift inline-flex min-h-11 items-center rounded-control border border-rule bg-sheet px-3.5 text-[14px] font-medium">เปิดในตั้งค่า</Link>}
             />
           ) : (
             <div className="flex flex-col gap-3">
-              {messages.length === 0 && (
+              {useContextChip && view === 'chat' && (
+                <span className="flex max-w-full items-center gap-1.5 self-start rounded-control bg-ground px-3 py-2 text-[14px] lg:hidden">
+                  <span className="truncate">{page.chip}</span>
+                  <button type="button" onClick={() => setDroppedChip(page.chip)} aria-label="ไม่ส่งบริบทหน้านี้" className="flex size-6 shrink-0 items-center justify-center text-ink-3">×</button>
+                </span>
+              )}
+              {messages.length === 0 && !blocked && (
                 <Starters
                   kind={page.kind}
                   recent={stored.history.slice(0, 3)}
@@ -391,6 +409,13 @@ function AiPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <Message key={`${m.at}-${i}`} message={m} tasks={tasks.data ?? []} projects={projects.data ?? []} />
               ))}
               {chat.isPending && <Answering onStop={stop} />}
+              {!chat.isPending && !error && messages.length > 0 && messages[messages.length - 1].role === 'model' && (
+                <div className="flex flex-wrap gap-2">
+                  {STARTERS[page.kind].prompts.filter((p) => !messages.some((m) => m.content === p)).slice(0, 2).map((p) => (
+                    <button key={p} type="button" onClick={() => send(p)} className="wc-lift min-h-11 rounded-pill border border-rule bg-sheet px-4 text-[15px] lg:min-h-9 lg:rounded-control lg:px-2.5 lg:text-[13px] lg:text-ink-2">{p}</button>
+                  ))}
+                </div>
+              )}
               {error && <ErrorBox key={errorSeq} error={error} resetsAt={status.data?.resetsAt} onRetry={retry} />}
               {off === 'quota' && !error && <QuotaBox resetsAt={status.data?.resetsAt} limit={status.data?.dailyLimit ?? 0} />}
             </div>
@@ -405,7 +430,9 @@ function AiPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
           chip={useContextChip && view === 'chat' && off !== 'disabled' && off !== 'unavailable' ? page.chip : null}
           onDropChip={() => setDroppedChip(page.chip)}
           disabled={blocked || chat.isPending}
-          blockedReason={blocked ? 'ถามได้อีกครั้งเมื่อ AI พร้อม' : null}
+          blockedReason={blocked ? (off === 'quota' && status.data?.resetsAt ? `ถามได้อีกครั้งเมื่อ ${clock(status.data.resetsAt)}` : 'ถามได้อีกครั้งเมื่อ AI พร้อม') : null}
+          pending={chat.isPending}
+          onStop={stop}
         />
       </aside>
     </>
@@ -423,11 +450,10 @@ function Starters({ kind, recent, onAsk, onOpen }: {
   const s = STARTERS[kind]
   return (
     <>
-      <p className="text-[12px] font-medium text-ink-3">{s.heading}</p>
       {kind === 'task' ? (
         <div className="flex flex-wrap gap-2">
           {s.prompts.map((p) => (
-            <button key={p} type="button" onClick={() => onAsk(p)} className="wc-lift min-h-9 rounded-control border border-rule bg-sheet px-2.5 text-[13px] text-ink-2">
+            <button key={p} type="button" onClick={() => onAsk(p)} className="wc-lift min-h-9 rounded-control border border-rule bg-sheet px-2.5 text-[13px] text-ink-2 max-lg:min-h-11 max-lg:rounded-pill max-lg:px-4 max-lg:text-[15px] max-lg:text-ink">
               {p}
             </button>
           ))}
@@ -439,7 +465,7 @@ function Starters({ kind, recent, onAsk, onOpen }: {
               key={p}
               type="button"
               onClick={() => onAsk(p)}
-              className={`block w-full px-3.5 py-[11px] text-left text-[14px] hover:bg-ink/[0.03] ${i < s.prompts.length - 1 ? 'border-b border-rule-soft' : ''}`}
+              className={`block w-full px-3.5 py-[11px] text-left text-[14px] max-lg:min-h-12 max-lg:text-[16px] hover:bg-ink/[0.03] ${i < s.prompts.length - 1 ? 'border-b border-rule-soft' : ''}`}
             >
               {p}
             </button>
@@ -493,15 +519,13 @@ function Message({ message, tasks, projects }: { message: ChatMessage; tasks: Pa
 
 function Answering({ onStop }: { onStop: () => void }) {
   return (
-    <div role="status" aria-live="polite" className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <span className="text-[12px] text-ink-3">กำลังอ่านงานของคุณและเรียบเรียงคำตอบ</span>
-        <button type="button" onClick={onStop} className="wc-lift min-h-9 rounded-control border border-rule bg-sheet px-3 text-[13px] font-medium">
-          หยุด
-        </button>
-      </div>
-      <Skeleton w="300px" h="10px" className="max-w-full" />
-      <Skeleton w="240px" h="10px" className="max-w-full" />
+    <div role="status" aria-live="polite" aria-label="กำลังตอบ" className="flex flex-col gap-3">
+      <Skeleton w="100%" h="10px" />
+      <Skeleton w="92%" h="10px" />
+      <Skeleton w="62%" h="10px" />
+      <button type="button" onClick={onStop} className="wc-lift min-h-9 self-start rounded-control border border-rule bg-sheet px-3 text-[13px] font-medium max-lg:sr-only">
+        หยุด
+      </button>
     </div>
   )
 }
@@ -564,15 +588,13 @@ function ErrorBox({ error, resetsAt, onRetry }: { error: Error; resetsAt?: strin
 
 function QuotaBox({ resetsAt, limit }: { resetsAt?: string; limit?: number }) {
   return (
-    <div role="status" className="rounded-control bg-time-soon-wash px-3.5 py-3">
-      <p className="text-[14px] font-semibold text-time-soon-strong">
-        {limit ? `ใช้ครบ ${limit} คำถามของวันนี้แล้ว` : 'ใช้ครบโควตาของวันนี้แล้ว'}
-      </p>
-      <p className="mt-1 text-[13px] text-ink-2">
-        {resetsAt ? `นับใหม่ ${clock(resetsAt)} น.` : 'นับใหม่ทุกเที่ยงคืน'} ระหว่างนี้ค้นหางานแบบปกติได้
-      </p>
-      <div className="mt-2 pt-1">
-        <SearchButton />
+    <div role="status" className="flex gap-2.5 rounded-control bg-time-soon-wash px-3.5 py-3">
+      <Icon name="clock" size={20} className="mt-0.5 text-time-soon-strong" />
+      <div>
+        <p className="text-[15px] font-semibold text-time-soon-strong">ครบโควตาของวันนี้แล้ว</p>
+        <p className="mt-0.5 text-[14px] text-ink-2">
+          ถามได้อีกครั้งเมื่อ {resetsAt ? clock(resetsAt) : '00:00'}{limit ? ` · ${limit} จาก ${limit} คำถาม` : ''}
+        </p>
       </div>
     </div>
   )
@@ -591,11 +613,11 @@ function SearchButton() {
   )
 }
 
-function Notice({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
+function Notice({ title, body, action }: { title: string; body?: string; action?: React.ReactNode }) {
   return (
     <div>
       <p className="font-display text-[20px] font-medium leading-[1.3]">{title}</p>
-      <p className="mt-2 text-[13px] leading-[1.5] text-ink-2">{body}</p>
+      {body && <p className="mt-2 text-[13px] leading-[1.5] text-ink-2">{body}</p>}
       {action && <div className="mt-3.5">{action}</div>}
     </div>
   )
@@ -608,7 +630,7 @@ function History({ conversations, current, onOpen }: {
 }) {
   const all = [...(current && current.messages.length > 0 ? [current] : []), ...conversations]
   if (all.length === 0) {
-    return <p className="text-[13px] text-ink-3">ยังไม่มีแชทในแท็บนี้ · แชทเก็บไว้จนกว่าจะปิดแท็บ</p>
+    return <p className="text-[13px] text-ink-3">ยังไม่มีแชท</p>
   }
   const groups = new Map<string, Conversation[]>()
   for (const c of all) {
@@ -622,8 +644,8 @@ function History({ conversations, current, onOpen }: {
           <p className="pt-2 pb-1 text-[12px] font-medium text-ink-3">{label}</p>
           {items.map((c) => (
             <button key={c.id} type="button" onClick={() => onOpen(c)} className="block w-full border-b border-rule-soft py-3 text-left hover:bg-ink/[0.02]">
-              <span className="block truncate text-[14px]">{c.messages[0]?.content}</span>
-              <span className="mt-0.5 block truncate text-[12px] text-ink-3">ถามจาก: {c.where}</span>
+              <span className="block truncate text-[14px] max-lg:text-[17px] max-lg:font-medium">{c.messages[0]?.content}</span>
+              <span className="mt-0.5 block truncate text-[12px] text-ink-3 max-lg:text-[14px]">{when(c.startedAt)} · {c.where}</span>
             </button>
           ))}
         </section>
@@ -632,7 +654,9 @@ function History({ conversations, current, onOpen }: {
   )
 }
 
-function Composer({ inputRef, draft, onDraft, onSend, chip, onDropChip, disabled, blockedReason }: {
+function Composer({ inputRef, draft, onDraft, onSend, chip, onDropChip, disabled, blockedReason, pending, onStop }: {
+  pending?: boolean
+  onStop?: () => void
   inputRef: React.RefObject<HTMLTextAreaElement | null>
   draft: string
   onDraft: (v: string) => void
@@ -649,15 +673,15 @@ function Composer({ inputRef, draft, onDraft, onSend, chip, onDropChip, disabled
           e.preventDefault()
           onSend()
         }}
-        className={`flex flex-col gap-2 rounded-control border border-rule py-2.5 pr-2.5 pl-3 ${blockedReason ? 'bg-ground' : 'bg-sheet'}`}
+        className={`flex flex-col gap-2 rounded-control border border-rule py-2.5 pr-2.5 pl-3 max-lg:border-0 max-lg:bg-transparent max-lg:p-0 ${blockedReason ? 'bg-ground' : 'bg-sheet'}`}
       >
         {chip && (
-          <span className="flex max-w-full items-center gap-1.5 self-start rounded-[4px] bg-ground py-0.5 pr-1.5 pl-2 text-[12px] text-ink-2">
+          <span className="flex max-w-full items-center gap-1.5 self-start rounded-[4px] bg-ground py-0.5 pr-1.5 pl-2 text-[12px] text-ink-2 max-lg:hidden">
             <span className="truncate">{chip}</span>
             <button type="button" onClick={onDropChip} aria-label="ไม่ส่งบริบทหน้านี้" className="text-[13px] text-ink-3 hover:text-ink">×</button>
           </span>
         )}
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 max-lg:items-center max-lg:gap-3">
           <textarea
             ref={inputRef}
             value={draft}
@@ -673,18 +697,25 @@ function Composer({ inputRef, draft, onDraft, onSend, chip, onDropChip, disabled
             disabled={disabled}
             placeholder={blockedReason ?? 'ถามเรื่องงานของคุณ'}
             aria-label="คำถามถึง AI"
-            className="max-h-32 min-h-[24px] min-w-0 flex-1 resize-none bg-transparent text-[14px] leading-[1.4] placeholder:text-ink-3 focus:outline-none"
+            className="max-h-32 min-h-[24px] min-w-0 flex-1 resize-none bg-transparent text-[14px] leading-[1.4] placeholder:text-ink-3 focus:outline-none max-lg:min-h-12 max-lg:rounded-pill max-lg:border max-lg:border-rule max-lg:bg-ground max-lg:px-4 max-lg:py-3 max-lg:text-[16px]"
           />
-          <button
-            type="submit"
-            disabled={disabled || !draft.trim()}
-            className={`min-h-9 shrink-0 rounded-control px-3 text-[13px] font-medium lg:hidden ${disabled ? 'bg-ground text-ink-3' : 'bg-brand text-on-dark disabled:opacity-55'}`}
-          >
-            ถาม
-          </button>
+          {pending ? (
+            <button type="button" onClick={onStop} aria-label="หยุด" className="flex size-12 shrink-0 items-center justify-center rounded-full bg-ink lg:hidden">
+              <span className="size-3.5 rounded-[2px] bg-on-dark" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={disabled || !draft.trim()}
+              aria-label="ถาม"
+              className={`flex size-12 shrink-0 items-center justify-center rounded-full lg:hidden ${disabled ? 'bg-ground text-ink-3' : 'bg-brand-strong text-on-dark disabled:opacity-55'}`}
+            >
+              <Icon name="arrowUp" size={22} />
+            </button>
+          )}
         </div>
         <div className="hidden items-center justify-between lg:flex">
-          <span className="text-[11.5px] text-ink-3">Enter ส่ง · Shift+Enter ขึ้นบรรทัด</span>
+          <span />
           <button
             type="submit"
             disabled={disabled || !draft.trim()}
@@ -694,7 +725,6 @@ function Composer({ inputRef, draft, onDraft, onSend, chip, onDropChip, disabled
           </button>
         </div>
       </form>
-      <p className="mt-2 text-[11.5px] text-ink-3">ตอบจากข้อมูลของคุณเท่านั้น · สร้างโดย AI ตรวจก่อนทำ</p>
     </div>
   )
 }

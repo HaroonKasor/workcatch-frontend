@@ -8,6 +8,8 @@ import { noteCategoryLabel, projectDot } from '../lib/style'
 import { sinceLabel } from '../lib/time'
 import type { Note, NoteCategory, Project } from '../lib/types'
 import { useNow } from '../lib/useNow'
+import { useIsDesktop } from '../lib/useMedia'
+import { NotesMobile } from '../components/mobile/NotesMobile'
 
 /**
  * /app/notes — Figma v2 423:1468 (1440), 423:3436 (390); v1 127:1082, 143:1244
@@ -32,6 +34,7 @@ export default function Notes() {
   const [params, setParams] = useSearchParams()
   const [q, setQ] = useState('')
   const now = useNow()
+  const desktop = useIsDesktop()
   const filter = params.get('filter') ?? 'all'
 
   const { pinned, rest } = useMemo(() => {
@@ -56,6 +59,20 @@ export default function Notes() {
   const projectOf = (n: Note) => (projects.data ?? []).find((p) => p.id === n.projectId)
   const nothing = pinned.length === 0 && rest.length === 0
   const filtered = filter !== 'all' || q.trim() !== ''
+  if (!desktop) {
+    return (
+      <NotesMobile
+        pinned={pinned}
+        rest={rest}
+        total={(data ?? []).length}
+        filters={FILTERS}
+        filter={filter}
+        setFilter={(k) => setParams(k === 'all' ? {} : { filter: k })}
+        now={now}
+        empty={nothing ? (filtered ? <NoMatch query={q} /> : <FirstNote />) : undefined}
+      />
+    )
+  }
 
   return (
     <>
@@ -73,7 +90,7 @@ export default function Notes() {
             to="/app/notes/trash"
             className="wc-lift flex min-h-11 items-center rounded-control px-3 text-[13px] font-medium text-ink-2 hover:text-ink"
           >
-            ถังลบ
+            ถังขยะ
           </Link>
           {/* Desktop only. On a phone the tab bar's + already offers เพิ่มบันทึก,
               and Figma 143:1244 has no second create button competing with it. */}
@@ -222,18 +239,12 @@ function FirstNote() {
   return (
     <div className="mt-7 rounded-sheet border border-rule bg-sheet px-8 py-11">
       <p className="t-section">เก็บวิธีทำงานที่ต้องทำซ้ำ</p>
-      <p className="t-body text-ink-2 mt-2.5 max-w-[46ch] leading-relaxed">
-        งานบางอย่างทำเดือนละครั้งแล้วลืมขั้นตอนทุกครั้ง บันทึกไว้ที่นี่แล้วผูกกับงานจริง คราวหน้าเปิดงานก็เจอวิธีทำทันที
-      </p>
       <Link
         to="/app/notes/new"
         className="wc-lift mt-5 inline-flex min-h-11 items-center rounded-control bg-ink px-4.5 text-[13px] font-medium text-on-dark"
       >
         สร้างบันทึกแรก
       </Link>
-      <p className="t-note text-ink-3 mt-4 max-w-[46ch]">
-        เก็บได้: ขั้นตอน · Checklist · ลิงก์ · ผู้ติดต่อ · ไฟล์ · ข้อมูลเข้าสู่ระบบแบบซ่อนค่า
-      </p>
     </div>
   )
 }
@@ -244,12 +255,6 @@ function NoMatch({ query }: { query: string }) {
     <div className="mt-7 rounded-sheet border border-rule bg-sheet px-8 py-11">
       <p className="t-section">
         {query.trim() ? `ไม่พบบันทึกที่ตรงกับ “${query.trim()}”` : 'ไม่มีบันทึกที่ตรงกับตัวกรอง'}
-      </p>
-      <p className="t-body text-ink-2 mt-2.5 max-w-[46ch] leading-relaxed">
-        ลองใช้คำที่สั้นลง หรือเปลี่ยนไปค้นจากชื่อโปรเจกต์แทน
-      </p>
-      <p className="t-note text-ink-3 mt-4 max-w-[46ch]">
-        การค้นหาไม่รวมค่าที่ซ่อนไว้ในข้อมูลเข้าสู่ระบบ — ค่าเหล่านั้นไม่ถูกทำดัชนีโดยตั้งใจ
       </p>
     </div>
   )

@@ -31,6 +31,14 @@ handle, set `localStorage['wc.ai.mock']` to one of `ok`, `unavailable`,
 `disabled`, `quota`, `busy`, `failed`, `slow` (a 60-second answer, for the หยุด
 button) or `empty` (the overview card's 204), then reload.
 
+## Attachments on the local store
+
+With `VITE_API=0` uploads (`backend/docs/attachments-api.md`) are answered by
+`src/lib/attachMock.ts`: progress ticks, the row is SCANNING for 5 s, then gets
+its verdict. Set `localStorage['wc.attach.mock']` to `ok` (CLEAN, the default),
+`infected`, `too_large`, or one of the refusals `FILE_TOO_LARGE`,
+`UNSUPPORTED_TYPE`, `TOO_MANY_FILES`, `STORAGE_FULL`, `UPLOAD_RATE`, then reload.
+
 ## The design system
 
 Tokens live in `src/index.css` and mirror the Figma variables exactly. The class

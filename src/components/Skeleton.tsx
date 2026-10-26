@@ -25,7 +25,7 @@ export function Skeleton({ w, h = '12px', className = '' }: {
  * The eyebrow / title / standfirst stack that opens every screen in this app.
  * Sized off the real type ramp: t-caption is ~15px tall, t-page-title ~42px.
  */
-export function SkeletonPageHeader({ standfirst = true }: { standfirst?: boolean }) {
+export function SkeletonPageHeader({ standfirst = false }: { standfirst?: boolean }) {
   return (
     <>
       <Skeleton w="96px" h="11px" />

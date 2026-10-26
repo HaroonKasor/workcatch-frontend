@@ -8,7 +8,7 @@
     "prebuild": "node scripts/check-legal.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --test src/lib/projectTag.test.ts src/lib/aiRules.test.ts",
+    "test": "node --test src/lib/projectTag.test.ts src/lib/aiRules.test.ts src/lib/attachments.test.ts src/lib/links.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
