@@ -4,6 +4,7 @@ import { LineMark } from '../components/LineMark'
 import { useMe } from '../lib/api'
 import { LINE_OA_ADD_FRIEND_URL, LINE_OA_ID } from '../lib/line'
 import { entryDestination } from '../lib/session'
+import { BrandMark } from '../components/BrandMark'
 
 /**
  * /login — Figma node 32:3 (1440), 248:1569 (390), states 248:1598
@@ -113,8 +114,11 @@ function Pitch() {
 function Wordmark() {
   return (
     <div>
-      <p className="t-wordmark">WorkCatch</p>
-      <p className="t-meta mt-px opacity-50">ไม่ให้งานหล่น</p>
+      <div className="flex items-center gap-2">
+        <BrandMark />
+        <p className="t-wordmark">WorkCatch</p>
+      </div>
+      <p className="t-meta mt-px pl-8 opacity-50">ไม่ให้งานหล่น</p>
     </div>
   )
 }

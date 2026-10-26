@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { BrandMark } from './BrandMark'
 
 /**
  * The top bar and footer every public page shares — the landing page (Figma
@@ -27,7 +28,7 @@ const SECTIONS = [
 export function SiteHeader({ signedIn, onLanding = false }: { signedIn: boolean; onLanding?: boolean }) {
   const wordmark = (
     <div className="flex items-center gap-2.5">
-      <img src="/images/workcatch-logo.png" alt="" className="size-10 shrink-0" />
+      <BrandMark size={32} className="shrink-0 text-ink" />
       <div>
         <p className="t-wordmark">WorkCatch</p>
         <p className="t-meta mt-px hidden text-ink-3 lg:block">ไม่ให้งานหล่น</p>

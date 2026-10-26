@@ -374,7 +374,7 @@ function AiPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
           ) : off === 'disabled' ? (
             <Notice
               title="ผู้ช่วย AI ปิดอยู่"
-              body="เมื่อเปิดแล้ว ชื่องาน กำหนดส่ง และชื่อโปรเจกต์ของคุณจะถูกส่งไปที่ Google Gemini"
+              body="เมื่อเปิดแล้ว ชื่องาน กำหนดส่ง และชื่อโปรเจกต์ของคุณจะถูกส่งไปประมวลผลที่ Google"
               action={<Link to="/app/settings#ai" onClick={onClose} className="wc-lift inline-flex min-h-9 items-center rounded-control bg-brand px-3.5 text-[13px] font-medium text-on-dark">ไปที่ตั้งค่า AI</Link>}
             />
           ) : (

@@ -71,7 +71,7 @@ export function AiSuggestionBlock({ tasks }: { tasks: Task[] }) {
         >
           ขอคำแนะนำวันนี้
         </button>
-        <span className="text-[12px] text-ink-3">สร้างโดย AI · ส่งชื่องานและกำหนดส่งไปที่ Google Gemini เมื่อกด</span>
+        <span className="text-[12px] text-ink-3">สร้างโดย AI · ส่งชื่องานและกำหนดส่งไปประมวลผลที่ Google เมื่อกด</span>
       </section>
     )
   }

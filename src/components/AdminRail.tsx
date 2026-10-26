@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAdminOverview } from '../lib/api'
+import { BrandMark } from './BrandMark'
 
 /**
  * Admin rail — Figma node 48:96.
@@ -38,7 +39,10 @@ export function AdminRail() {
       aria-label="เมนูผู้ดูแลระบบ"
       className="no-scrollbar sticky top-0 h-viewport w-rail shrink-0 overflow-y-auto overscroll-contain border-r border-rule bg-sheet px-5 pt-6 pb-7 text-ink"
     >
-      <p className="t-wordmark">WorkCatch</p>
+      <div className="flex items-center gap-2">
+        <BrandMark className="text-ink" />
+        <p className="t-wordmark">WorkCatch</p>
+      </div>
       <span className="t-label mt-1.5 inline-block rounded-control bg-ink px-2 py-1 text-on-dark">
         ผู้ดูแลระบบ
       </span>

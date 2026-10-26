@@ -4,6 +4,7 @@ import { LineMark } from '../components/LineMark'
 import { SiteFooter, SiteHeader } from '../components/SiteChrome'
 import { useMe } from '../lib/api'
 import { LINE_OA_ADD_FRIEND_URL, LINE_OA_ID } from '../lib/line'
+import { BrandMark } from '../components/BrandMark'
 
 /**
  * / — Figma 284:1638 (1440), 289:1729 (390)
@@ -305,8 +306,11 @@ const RAIL_GROUPS: { label: string; items: { name: string; count?: string; late?
 function MiniRail() {
   return (
     <div className="overflow-hidden border-r border-rule-soft bg-sheet px-5 pt-7">
-      <p className="t-wordmark">WorkCatch</p>
-      <p className="t-meta mt-px text-ink-3">ไม่ให้งานหล่น</p>
+      <div className="flex items-center gap-2">
+        <BrandMark className="text-ink" />
+        <p className="t-wordmark">WorkCatch</p>
+      </div>
+      <p className="t-meta mt-px pl-8 text-ink-3">ไม่ให้งานหล่น</p>
       <div className="mt-6 flex h-[43px] items-center rounded-control bg-brand-strong px-5 text-[13px] font-medium text-white">
         เพิ่มงาน
       </div>

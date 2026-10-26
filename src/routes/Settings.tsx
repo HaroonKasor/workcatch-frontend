@@ -582,7 +582,7 @@ function AiSettings() {
 
   return (
     <div id="ai" className="scroll-mt-8">
-      <Section title="ผู้ช่วย AI" note="ใช้ Google Gemini">
+      <Section title="ผู้ช่วย AI">
         {status.isPending || prefs.isPending ? (
           <div className="px-5 py-4"><Skeleton w="100%" h="40px" /><Skeleton w="100%" h="40px" className="mt-2" /></div>
         ) : status.isError || prefs.isError ? (
@@ -622,17 +622,6 @@ function AiSettings() {
                 <SentRow what="ข้อมูลลับในบันทึก (รหัส บัญชีผู้ใช้)" when="ไม่ส่งเลย" />
                 <SentRow what="ข้อความต้นฉบับจาก LINE" when="ไม่ส่งเลย" />
               </dl>
-            </div>
-            <div className="border-b border-rule-soft px-5 py-3.5">
-              <div className="rounded-control bg-time-soon-wash px-4 py-3.5">
-                <p className="text-[14px] font-semibold text-time-soon-strong">อ่านก่อนเปิดใช้</p>
-                <p className="mt-1.5 text-[13px] leading-[1.55] text-ink">
-                  WorkCatch ใช้ Google Gemini รุ่นฟรี ข้อความที่ส่งไปอาจถูก Google นำไปปรับปรุงบริการของ Google ได้ อย่าถามหรือใส่ข้อมูลส่วนตัว รหัสผ่าน หรือความลับของลูกค้าในงานที่ส่งให้ AI · เนื้อหาบันทึก ข้อมูลลับ และข้อความต้นฉบับจาก LINE ไม่ถูกส่งเลย
-                </p>
-                <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-[13px] font-medium text-brand-strong underline underline-offset-2">
-                  นโยบายข้อมูลของ Google Gemini ↗
-                </a>
-              </div>
             </div>
             <div className="px-5 py-3.5">
               <div className="flex items-baseline justify-between gap-3">

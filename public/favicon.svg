@@ -1,9 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- The product's own mark: a task row. Ink sheet, crimson state bar on the
-       left, two rules standing in for a title and its meta line. Derived from
-       the design system rather than borrowed from a framework. -->
-  <rect width="32" height="32" rx="6" fill="#14181A"/>
-  <rect x="7" y="8" width="3" height="16" fill="#96122F"/>
-  <rect x="13" y="11" width="13" height="3" rx="1.5" fill="#FCFCFB"/>
-  <rect x="13" y="18" width="8" height="3" rx="1.5" fill="#FCFCFB" opacity="0.45"/>
+  <!-- The WorkCatch mark (Figma 440:2247) on a light tile so it reads on dark and light tabs. -->
+  <rect width="32" height="32" rx="7" fill="#FCFCFB"/>
+  <g transform="translate(4 4)">
+    <path d="M4.5 5.25V12.75C4.5 14.7391 5.29018 16.6468 6.6967 18.0533C8.10322 19.4598 10.0109 20.25 12 20.25C13.9891 20.25 15.8968 19.4598 17.3033 18.0533C18.7098 16.6468 19.5 14.7391 19.5 12.75V5.25" stroke="#0A8F5A" stroke-width="3.375" fill="none"/>
+    <path d="M14.625 7.5H9.375V12.75H14.625V7.5Z" fill="#14181A"/>
+  </g>
 </svg>
