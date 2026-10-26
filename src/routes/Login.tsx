@@ -77,6 +77,7 @@ export default function Login() {
         <Pitch />
         <main className="flex items-center justify-center px-6 py-16">
           <div className="w-full max-w-[396px]">
+            <BackHome className="mb-4 inline-flex" />
             <SignInPanel outcome={outcome} />
           </div>
         </main>
